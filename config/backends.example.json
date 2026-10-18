@@ -1,0 +1,49 @@
+{
+  "accounts": [
+    {
+      "name": "vendor-a",
+      "base_url": "https://api.example-llm.com/v1",
+      "api_keys": ["sk-xxxxx", "sk-yyyyy"]
+    },
+    {
+      "name": "vendor-b",
+      "base_url": "https://api.other-llm.example/v1",
+      "api_keys": ["sk-zzzzz"]
+    }
+  ],
+  "backends": [
+    {
+      "name": "vendor-a-main",
+      "account": "vendor-a",
+      "model": "demo-model",
+      "base_url": "https://api.example-llm.com/v1",
+      "timeout": 600,
+      "weight": 1,
+      "concurrency": 8,
+      "enabled": true,
+      "is_primary": true
+    },
+    {
+      "name": "vendor-a-bulk",
+      "account": "vendor-a",
+      "model": "demo-model",
+      "base_url": "https://api.example-llm.com/v1",
+      "timeout": 600,
+      "concurrency": 4,
+      "enabled": true,
+      "is_fallback": true,
+      "session_header": "",
+      "pricing": { "input": 0.15, "output": 0.5, "cached_read": 0.03 }
+    },
+    {
+      "name": "vendor-b-quirky",
+      "account": "vendor-b",
+      "model": "demo-model",
+      "base_url": "https://api.other-llm.example/v1",
+      "timeout": 600,
+      "concurrency": 4,
+      "enabled": true,
+      "driver": ""
+    }
+  ]
+}

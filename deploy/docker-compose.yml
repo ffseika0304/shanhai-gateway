@@ -1,0 +1,35 @@
+# ShanHaiGateway (shg) — 单容器部署。
+# 真实 backends.json / keys.json 放 ./runtime/config/（gitignored，仓库零密钥），
+# 从 config/*.example.json 拷贝改字段即可。数据（shg.db + logs）落 ./runtime/data/。
+#
+#   cp config/backends.example.json runtime/config/backends.json && vi runtime/config/backends.json
+#   cp config/keys.example.json    runtime/config/keys.json    && vi runtime/config/keys.json
+#   docker compose -f deploy/docker-compose.yml up -d --build
+#
+# 宿主侧默认 :18016（与原 shadow 部署语义一致）；要改端口设 SHG_PORT。
+# LAN 口 /v1/chat/completions 免账；下游 key 计费只在公网口/用户中心启用。
+
+services:
+  shg:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    image: shg:0.5.0
+    container_name: shg
+    ports:
+      - "${SHG_PORT:-18016}:18006"
+    volumes:
+      - ./runtime/config:/etc/shg      # backends.json / keys.json（真实密钥，不进 git）
+      - ./runtime/data:/var/lib/shg    # shg.db / quota.json / logs/
+    environment:
+      LISTEN: ":18006"
+      ROUTER_VALIDATE: "0"             # 跳过启动外网自检；配好真实 key 后可删，让网关自检后端
+      # SESSION_AFFINITY: "off"        # 亲和 kill-switch（README 四 env 表）
+      # REASONING_EFFORT: "low"        # 思考模型统一推理预算（默认 low，空串=不注入）
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:18006/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 5s

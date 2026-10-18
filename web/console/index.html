@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ShanHai Gateway</title>
+<style>
+:root{--bg:#f5f5f5;--card:#fff;--text:#333;--sub:#666;--border:#ddd;--primary:#1890ff;--success:#52c41a;--danger:#f5222d;--warn:#faad14}
+@media(prefers-color-scheme:dark){:root{--bg:#1a1a2e;--card:#16213e;--text:#e0e0e0;--sub:#a0a0a0;--border:#2a2a4a;--primary:#4fc3f7;--success:#66bb6a;--danger:#ef5350;--warn:#ffa726}}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+.nav{background:var(--card);border-bottom:1px solid var(--border);padding:12px 24px;display:flex;justify-content:space-between;align-items:center}
+.nav a{color:var(--primary);text-decoration:none;margin-left:16px;font-size:14px}
+.nav a.active{font-weight:700}
+.container{max-width:800px;margin:0 auto;padding:24px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:24px;margin-bottom:16px}
+h1{font-size:20px;margin-bottom:4px}
+h2{font-size:16px;margin-bottom:12px;color:var(--sub)}
+.sub{color:var(--sub);font-size:14px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px}
+.stat{text-align:center;padding:20px;background:var(--card);border:1px solid var(--border);border-radius:8px}
+.stat .num{font-size:28px;font-weight:700}
+.stat .label{font-size:13px;color:var(--sub);margin-top:4px}
+.btn{padding:8px 20px;border:none;border-radius:6px;cursor:pointer;font-size:14px;background:var(--primary);color:#fff}
+.btn:hover{opacity:.9}
+.btn-outline{background:transparent;border:1px solid var(--border);color:var(--text)}
+.btn-danger{background:var(--danger);color:#fff}
+.btn-sm{padding:4px 12px;font-size:13px}
+input[type=text]{padding:8px 12px;border:1px solid var(--border);border-radius:6px;background:var(--bg);color:var(--text);font-size:14px;width:100%}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{padding:8px 12px;text-align:left;border-bottom:1px solid var(--border)}
+th{color:var(--sub);font-weight:500;font-size:13px}
+.badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:12px}
+.badge-ok{background:#e6f7e6;color:#1a7a1a}.badge-err{background:#fde8e8;color:#c62828}
+.qr-box{width:240px;height:240px;border:2px solid var(--border);border-radius:8px;margin:16px auto;display:flex;align-items:center;justify-content:center;background:var(--bg);overflow:hidden}
+.qr-box img{width:100%;height:100%}
+.text-center{text-align:center}
+.mt-8{margin-top:8px}.mt-16{margin-top:16px}.mt-24{margin-top:24px}
+.mb-16{margin-bottom:16px}
+.hidden{display:none}
+.token-display{background:var(--bg);padding:12px;border-radius:6px;font-family:monospace;font-size:13px;word-break:break-all;margin-top:12px}
+.lang-btn{background:transparent;border:1px solid var(--border);border-radius:4px;padding:2px 8px;font-size:12px;cursor:pointer;color:var(--sub)}
+.lang-btn.active{border-color:var(--primary);color:var(--primary)}
+.warn-box{background:#fff8e6;border:1px solid #ffe58f;border-radius:6px;padding:12px;text-align:center}
+.quota-full{background:#fde8e8;border:1px solid #ef9999;border-radius:6px;padding:12px;text-align:center}
+</style>
+</head>
+<body>
+<div class="nav">
+<span><a href="#/" id="brandLink">ShanHai Gateway</a></span>
+<span id="navLinks"></span>
+</div>
+<div class="container" id="app"><p class="sub">Loading...</p></div>
+<script>
+const API=location.origin;
+let token=localStorage.getItem("session_token");
+let user=null;
+let lang=localStorage.getItem("lang")||"zh";
+
+const T={
+zh:{dashboard:"仪表盘",apiKeys:"API 密钥",logout:"登出",adminLogin:"管理员登录",adminDesc:"密码登录",qrScanning:"请用微信扫描下方二维码登录",loading:"加载中...",loginSuccess:"登录成功",confirmOnPhone:"请在手机上完成确认",qrExpired:"二维码已过期，请刷新",error:"错误",remaining:"剩余额度",used:"已使用",quotaPct:"额度占比",quotaExhausted:"额度已用完 · API 请求被拒绝",renewQuota:"续费额度",serverMetrics:"服务器指标",totalRequests:"总请求数",success:"成功",failed:"失败",last60s:"近60秒",today:"今日",createKey:"创建 API 密钥",keyName:"密钥名称",copyKey:"复制密钥",dismiss:"关闭",name:"名称",keyStr:"密钥",created:"创建时间",actions:"操作",delete:"删除",noKeys:"暂无密钥",copySuccess:"已复制",confirmDelete:"确定删除？",brandTitle:"ShanHai Gateway",subtitle:"山海关网关 · 扫码或登录",docs:"文档"},
+en:{dashboard:"Dashboard",apiKeys:"API Keys",logout:"Logout",adminLogin:"Admin Login",adminDesc:"Password login",qrScanning:"Scan with WeChat to login",loading:"Loading...",loginSuccess:"Login Success",confirmOnPhone:"Please confirm on phone",qrExpired:"QR expired, refresh",error:"Error",remaining:"Remaining",used:"Used",quotaPct:"Quota Used",quotaExhausted:"Quota exhausted · API calls rejected",renewQuota:"Renew",serverMetrics:"Server Metrics",totalRequests:"Total Requests",success:"Success",failed:"Failed",last60s:"Last 60s",today:"Today",createKey:"Create Key",keyName:"Key name",copyKey:"Copy Key",dismiss:"Dismiss",name:"Name",keyStr:"Key",created:"Created",actions:"Actions",delete:"Delete",noKeys:"No keys yet",copySuccess:"Copied",confirmDelete:"Delete this key?",brandTitle:"ShanHai Gateway",subtitle:"ShanHai Gateway",docs:"Docs"}
+};
+function t(k){return T[lang][k]||k}
+
+function setLang(l){lang=l;localStorage.setItem("lang",l);document.documentElement.lang=l==="zh"?"zh":"en";render()}
+
+function render() {
+  if (token && !user) { loadUser().then(renderPage); return; }
+  renderPage();
+}
+
+async function loadUser() {
+  const d = await json("GET", "/api/user/me");
+  if (d && d.user_id) { user = d; }
+}
+
+function renderPage() {
+  const hash = location.hash || "#/";
+  if (hash === "#/docs") renderDocs();
+  else if (hash === "#/keys" && token) renderKeys();
+  else if (token) renderDashboard();
+  else renderLogin();
+}
+
+function renderNav() {
+  const nav = document.getElementById("navLinks");
+  const langBtn = `<span style="margin-left:16px"><button class="lang-btn ${lang==='zh'?'active':''}" onclick="setLang('zh')">中</button><button class="lang-btn ${lang==='en'?'active':''}" onclick="setLang('en')">EN</button></span>`;
+  if (!token) { nav.innerHTML = langBtn; return; }
+  nav.innerHTML = `<a href="#/" class="${location.hash==='#/'?'active':''}">${t("dashboard")}</a><a href="#/keys" class="${location.hash==='#/keys'?'active':''}">${t("apiKeys")}</a><a href="#/docs" class="${location.hash==='#/docs'?'active':''}">${t("docs")}</a><a href="javascript:logout()">${t("logout")}</a>${langBtn}`;
+}
+
+function logout() {
+  token=null; user=null; localStorage.removeItem("session_token"); render();
+}
+
+async function api(method, path, body) {
+  const opts = {method, headers:{"Content-Type":"application/json"}};
+  if (token) opts.headers["X-Session-Token"] = token;
+  if (body) opts.body = JSON.stringify(body);
+  const res = await fetch(`${API}${path}`, opts);
+  if (res.status === 401) { token=null; localStorage.removeItem("session_token"); render(); return null; }
+  return res;
+}
+
+async function json(method, path, body) {
+  const res = await api(method, path, body);
+  if (!res) return null;
+  return res.json();
+}
+
+function renderLogin() {
+  document.getElementById("app").innerHTML = `
+<div class="card text-center">
+<h1>${t("brandTitle")}</h1>
+<p class="sub">${t("subtitle")}</p>
+<div id="qrSection">
+<p class="mt-16 sub">${t("loading")}</p>
+<div class="qr-box" id="qrBox"></div>
+<p id="qrStatus" class="sub">${t("qrScanning")}</p>
+</div>
+<div class="mt-24" style="border-top:1px solid var(--border);padding-top:16px">
+<input type="password" id="adminPW" placeholder="${lang==='zh'?'管理员密码':'Admin password'}" class="mt-8" style="margin-bottom:8px">
+<br><button class="btn btn-outline" onclick="adminLogin()">${lang==='zh'?'管理员登录':'Admin Login'}</button>
+</div>
+</div>`;
+  renderNav();
+  startQRFlow();
+}
+
+async function startQRFlow() {
+  try {
+    const d = await json("POST", "/api/auth/qr/generate");
+    if (!d) return;
+    const ticket = d.ticket;
+    document.getElementById("qrBox").innerHTML = `<img src="${API}/api/auth/qr/code?ticket=${ticket}" alt="QR">`;
+    const wsUrl = API.replace("https:","wss:").replace("http:","ws:") + "/ws/qr?ticket=" + ticket;
+    try {
+      const ws = new WebSocket(wsUrl);
+      ws.onmessage = e => {
+        if (e.data !== "timeout") { token = e.data; localStorage.setItem("session_token", token); render(); }
+        else { document.getElementById("qrStatus").textContent = t("qrExpired"); }
+      };
+      ws.onerror = () => { startPolling(ticket); };
+      ws.onclose = () => { if (!token) startPolling(ticket); };
+    } catch(e) { startPolling(ticket); }
+  } catch(e) {}
+}
+
+function startPolling(t) {
+  let tries = 0;
+  const iv = setInterval(async () => {
+    tries++; if (tries > 300) { clearInterval(iv); return; }
+    const d = await json("GET", "/api/auth/qr/status?ticket=" + t);
+    if (d && d.status === "confirmed" && d.token) {
+      clearInterval(iv); token = d.token; localStorage.setItem("session_token", token); render();
+    }
+  }, 2000);
+}
+
+async function adminLogin() {
+  const pw = document.getElementById("adminPW").value;
+  if (!pw) { alert(lang==='zh'?'请输入密码':'Enter password'); return; }
+  const d = await json("POST", "/api/auth/admin-login", {password: pw});
+  if (d && d.token) { token = d.token; localStorage.setItem("session_token", token); await loadUser(); render(); }
+  else { alert(lang==='zh'?'密码错误':'Wrong password'); }
+}
+
+function copyKeyManual(fullKey) {
+  navigator.clipboard.writeText(fullKey).then(() => {
+    const toast = document.createElement('div');
+    toast.style.cssText = 'position:fixed;top:12px;left:50%;transform:translateX(-50%);background:#333;color:#fff;padding:8px 16px;border-radius:6px;font-size:13px;z-index:999';
+    toast.textContent = t('copySuccess');
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 1500);
+  }).catch(() => {});
+}
+
+function copyKey() {
+  const el = document.getElementById("newKeyValue");
+  if (!el) return;
+  const text = el.textContent;
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = el.parentElement.querySelector(".btn");
+    const orig = btn.textContent;
+    btn.textContent = t("copySuccess");
+    setTimeout(() => btn.textContent = orig, 1500);
+  }).catch(() => {
+    const r = document.createRange();
+    r.selectNodeContents(el);
+    window.getSelection().removeAllRanges();
+    window.getSelection().addRange(r);
+    document.execCommand("copy");
+  });
+}
+
+function renderDashboard() {
+  if (!user) { loadUser().then(renderDashboard); return; }
+  const m = window._metricsCache || {};
+  const pct = user.quota > 0 ? Math.round(user.used / user.quota * 100) : 0;
+  const barClass = pct >= 100 ? "badge-err" : pct >= 80 ? "badge-err" : pct >= 50 ? "badge-warn" : "badge-ok";
+  document.getElementById("app").innerHTML = `
+<div class="card">
+<h1>${t("dashboard")}</h1>
+<p class="sub">User #${user.user_id}</p>
+<div class="grid mt-16">
+<div class="stat"><div class="num">${user.quota-user.used}</div><div class="label">${t("remaining")}</div></div>
+<div class="stat"><div class="num">${user.used}</div><div class="label">${t("used")}</div></div>
+<div class="stat"><div class="num ${barClass}">${pct}%</div><div class="label">${t("quotaPct")}</div></div>
+</div>
+${pct >= 100 ? `<div class="mt-16 quota-full"><strong>${t("quotaExhausted")}</strong><br><button class="btn btn-sm mt-8" onclick="alert('Contact admin')">${t("renewQuota")}</button></div>` : ''}
+</div>
+<div class="card">
+<h2>${t("serverMetrics")}</h2>
+<div class="grid">
+<div class="stat"><div class="num">${m.total_requests||0}</div><div class="label">${t("totalRequests")}</div></div>
+<div class="stat"><div class="num" style="color:var(--success)">${m.total_ok||0}</div><div class="label">${t("success")}</div></div>
+<div class="stat"><div class="num" style="color:var(--danger)">${m.total_fail||0}</div><div class="label">${t("failed")}</div></div>
+<div class="stat"><div class="num">${m.recent_60s||0}</div><div class="label">${t("last60s")}</div></div>
+<div class="stat"><div class="num">${m.today_requests||0}</div><div class="label">${t("today")}</div></div>
+</div>
+</div>`;
+  renderNav();
+  (async()=>{try{window._metricsCache=await(await api("GET","/api/metrics")).json();}catch(e){}})();
+}
+
+async function renderKeys() {
+  const keys = await json("GET", "/api/user/keys") || [];
+  document.getElementById("app").innerHTML = `
+<div class="card">
+<h1>${t("apiKeys")}</h1>
+<div class="flex mt-16 mb-16">
+<input type="text" id="keyName" placeholder="${t("keyName")}" class="flex-1" style="max-width:300px">
+<button class="btn" onclick="createKey()">+ ${t("createKey")}</button>
+</div>
+<div id="newKeyArea" class="hidden" style="padding:16px;border-radius:6px;border:1px solid var(--success);background:rgba(82,196,26,.06);margin-top:8px">
+<p style="color:var(--success);font-weight:600">${lang==='zh'?'密钥已生成，请立即复制':'Key created — copy it now'}</p>
+<div id="newKeyValue" style="font-family:monospace;font-size:14px;margin:8px 0;word-break:break-all;background:var(--bg);padding:10px;border-radius:4px"></div>
+<div class="flex">
+<button class="btn btn-sm" onclick="copyKey()">${lang==='zh'?'复制密钥':'Copy Key'}</button>
+<button class="btn btn-sm" style="background:transparent;border:1px solid var(--border);color:var(--text)" onclick="document.getElementById('newKeyArea').classList.add('hidden')">${t("dismiss")}</button>
+</div>
+</div>
+<table>
+<thead><tr><th>${t("name")}</th><th>${t("keyStr")}</th><th>${t("created")}</th><th>${t("actions")}</th></tr></thead>
+<tbody>${keys.map(k => `<tr>
+<td>${k.name}</td>
+<td style="font-family:monospace;font-size:13px">${k.key_masked} <button class="btn btn-sm" style="font-size:11px;padding:2px 6px;margin-left:6px" onclick="copyKeyManual('${k.key_masked}')">${lang==='zh'?'复制':'copy'}</button></td>
+<td>${new Date(k.created_at*1000).toLocaleDateString()}</td>
+<td><button class="btn btn-sm btn-danger" onclick="deleteKey(${k.id})">${t("delete")}</button></td>
+</tr>`).join('') || `<tr><td colspan=4 class="sub">${t("noKeys")}</td></tr>`}</tbody>
+</table>
+</div>`;
+  renderNav();
+}
+
+async function createKey() {
+  const name = document.getElementById("keyName").value || "default";
+  const d = await json("POST", "/api/user/keys/generate", {name});
+  if (d && d.key) {
+    // 显示全密钥 + 复制按钮
+    const area = document.getElementById("newKeyArea");
+    area.classList.remove("hidden");
+    document.getElementById("newKeyValue").textContent = d.key;
+    navigator.clipboard.writeText(d.key).catch(() => {});
+    // 追加新行到表格（不重建整个 DOM）
+    const tbody = document.querySelector("#keysTable tbody");
+    if (tbody) {
+      const empty = tbody.querySelector("td[colspan]");
+      if (empty) empty.parentElement.remove();
+      tbody.insertAdjacentHTML("afterbegin",
+        `<tr><td>${name}</td><td style="font-family:monospace;font-size:13px">${d.key.slice(0,12)}...${d.key.slice(-4)} <button class="btn btn-sm" style="font-size:11px;padding:2px 6px;margin-left:6px" onclick="copyKeyManual('${d.key}')">${lang==='zh'?'复制':'copy'}</button></td><td>${new Date().toLocaleDateString()}</td><td><button class="btn btn-sm btn-danger" onclick="alert('reload page to delete')">delete</button></td></tr>`
+      );
+    }
+  }
+}
+
+function renderDocs() {
+  const base = location.origin;
+  document.getElementById("app").innerHTML = `
+<div class="card"><h1>${lang==='zh'?'文档':'Documentation'}</h1><p class="sub">ShanHai Gateway ${lang==='zh'?'使用说明':'User Guide'}</p></div>
+
+<div class="card"><h2>${lang==='zh'?'快速开始':'Quick Start'}</h2>
+<table>
+<tr><th>${lang==='zh'?'参数':'Parameter'}</th><th>${lang==='zh'?'值':'Value'}</th></tr>
+<tr><td style="font-weight:600">Base URL</td><td style="font-family:monospace;background:var(--bg);padding:4px 8px;border-radius:4px">${base}</td></tr>
+<tr><td style="font-weight:600">API Key</td><td>${lang==='zh'?'登录后在「API 密钥」页创建':'Create'} <code>sk-user-xxx</code></td></tr>
+<tr><td style="font-weight:600">Model</td><td style="font-family:monospace;background:var(--bg);padding:4px 8px;border-radius:4px">deepseek-v4-flash</td></tr>
+<tr><td style="font-weight:600">Max Tokens</td><td>${lang==='zh'?'按需填写，推荐 4096':'Recommended 4096'}</td></tr>
+</table></div>
+
+<div class="card"><h2>cURL ${lang==='zh'?'示例':'Example'}</h2>
+<div style="background:var(--bg);padding:12px;border-radius:6px;font-family:monospace;font-size:13px;white-space:pre;overflow-x:auto;border:1px solid var(--border)">curl ${base}/v1/chat/completions \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "deepseek-v4-flash",
+    "messages": [{"role": "user", "content": "${lang==='zh'?'你好':'hello'}"}],
+    "max_tokens": 256
+  }'</div></div>
+
+<div class="card"><h2>${lang==='zh'?'技术架构':'Architecture'}</h2>
+<table>
+<tr><th>${lang==='zh'?'层级':'Layer'}</th><th>技术</th><th>${lang==='zh'?'说明':'Role'}</th></tr>
+<tr><td>${lang==='zh'?'网关':'Gateway'}</td><td>Go 1.27</td><td>${lang==='zh'?'鉴权/路由/429降级/SSE透传/metrics':'Auth/routing/429/SSE/metrics'}</td></tr>
+<tr><td>${lang==='zh'?'认证':'Auth'}</td><td>Go + SQLite</td><td>${lang==='zh'?'微信登录/PC扫码/管理员密码':'WeChat/QR/admin password'}</td></tr>
+<tr><td>${lang==='zh'?'LLM':'LLM'}</td><td>Volc Ark / DeepSeek</td><td>${lang==='zh'?'直连、多后端路由、key轮询、熔断':'Direct, multi-backend, rotation, circuit breaker'}</td></tr>
+<tr><td>${lang==='zh'?'反向代理':'Proxy'}</td><td>nginx (阿里云)</td><td>${lang==='zh'?'SSL终结/WebSocket透传':'SSL termination / WebSocket passthrough'}</td></tr>
+<tr><td>Frontend</td><td>HTML + JS (go:embed)</td><td>${lang==='zh'?'嵌入Go二进制，单文件部署':'Embedded in Go binary'}</td></tr>
+<tr><td>${lang==='zh'?'小程序':'Mini-program'}</td><td>WeChat Native</td><td>${lang==='zh'?'扫码登录':'QR login'}</td></tr>
+</table></div>
+
+<div class="card"><h2>${lang==='zh'?'端点一览':'Endpoints'}</h2>
+<table>
+<tr><th>Endpoint</th><th>Method</th><th>${lang==='zh'?'说明':'Description'}</th></tr>
+<tr><td><code>/v1/chat/completions</code></td><td>POST</td><td>${lang==='zh'?'LLM 调用（OpenAI 兼容）':'LLM call (OpenAI-compatible)'}</td></tr>
+<tr><td><code>/v1/models</code></td><td>GET</td><td>${lang==='zh'?'可用模型':'Available models'}</td></tr>
+<tr><td><code>/api/user/me</code></td><td>GET</td><td>${lang==='zh'?'用户信息与额度':'User info & quota'}</td></tr>
+<tr><td><code>/api/user/keys</code></td><td>GET/POST/DEL</td><td>${lang==='zh'?'密钥管理':'Key management'}</td></tr>
+<tr><td><code>/api/metrics</code></td><td>GET</td><td>${lang==='zh'?'运行指标':'Metrics'}</td></tr>
+<tr><td><code>/api/auth/admin-login</code></td><td>POST</td><td>${lang==='zh'?'管理员登录':'Admin login'}</td></tr>
+<tr><td><code>/health</code></td><td>GET</td><td>${lang==='zh'?'健康检查':'Health'}</td></tr>
+</table></div>
+`;
+  renderNav();
+}
+
+async function deleteKey(id) {
+  if (!confirm(t("confirmDelete"))) return;
+  await api("DELETE", "/api/user/keys/" + id);
+  renderKeys();
+}
+
+function copyKeyManual(fullKey) {
+  navigator.clipboard.writeText(fullKey).then(() => {
+    const toast = document.createElement('div');
+    toast.style.cssText = 'position:fixed;top:12px;left:50%;transform:translateX(-50%);background:#333;color:#fff;padding:8px 16px;border-radius:6px;font-size:13px;z-index:999';
+    toast.textContent = t('copySuccess');
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 1500);
+  }).catch(() => {});
+}
+
+function copyKey() {
+  const el = document.getElementById("newKeyValue");
+  if (!el) return;
+  const text = el.textContent;
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = el.parentElement.querySelector(".btn");
+    const orig = btn.textContent;
+    btn.textContent = t("copySuccess");
+    setTimeout(() => btn.textContent = orig, 1500);
+  }).catch(() => {
+    const r = document.createRange();
+    r.selectNodeContents(el);
+    window.getSelection().removeAllRanges();
+    window.getSelection().addRange(r);
+    document.execCommand("copy");
+  });
+}
+
+document.documentElement.lang = lang==="zh"?"zh":"en";
+window.addEventListener("hashchange", () => { renderNav(); renderPage(); });
+render();
+</script>
+</body>
+</html>

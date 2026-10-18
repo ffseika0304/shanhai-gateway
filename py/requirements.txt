@@ -1,0 +1,12 @@
+# sidecar.py 依赖说明
+#
+# sidecar.py 只依赖 Python 标准库，无任何第三方包：
+#   json / os / time / urllib.request
+#
+# 因此本文件**不需要 pip 安装任何东西**，保留它只是为部署脚本提供
+# 一个明确的声明位：如果未来 sidecar 引入第三方依赖，写在这里，
+# 而不是默默加 import。
+#
+# 标准库兼容性：脚本用到 `dict[str, tuple[str, ...]]`、`X | None`
+# 等类型标注语法（PEP 604 / 585），需要 Python >= 3.9 / 3.10
+# （`from __future__ import annotations` 已置于文件头，3.9 即可运行）。

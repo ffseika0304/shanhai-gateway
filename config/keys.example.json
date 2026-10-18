@@ -1,0 +1,9 @@
+[
+  {
+    "name": "local-client",
+    "key": "sk-user-change-me",
+    "quota": 200000,
+    "used": 0,
+    "enabled": true
+  }
+]

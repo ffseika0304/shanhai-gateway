@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ShanHai Gateway</title>
+<style>
+:root{--bg:#0d1117;--card:#161b22;--text:#c9d1d9;--sub:#8b949e;--border:#30363d;--primary:#58a6ff;--success:#3fb950;--danger:#f85149;--warn:#d29922}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+.nav{background:var(--card);border-bottom:1px solid var(--border);padding:12px 24px;display:flex;justify-content:space-between;align-items:center}
+.nav a{color:var(--primary);text-decoration:none;margin-left:16px;font-size:14px}
+.nav a.active{font-weight:700}
+.container{max-width:1200px;margin:0 auto;padding:24px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:24px;margin-bottom:16px}
+h1{font-size:20px;margin-bottom:4px;color:var(--primary)}
+h2{font-size:16px;margin-bottom:12px;color:var(--sub)}
+.sub{color:var(--sub);font-size:14px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px}
+.stat{text-align:center;padding:20px;background:var(--bg);border:1px solid var(--border);border-radius:8px}
+.stat .num{font-size:28px;font-weight:700}
+.stat .label{font-size:13px;color:var(--sub);margin-top:4px}
+.ok{color:var(--success)}.err{color:var(--danger)}.blue{color:var(--primary)}.warn{color:var(--warn)}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{padding:8px 12px;text-align:left;border-bottom:1px solid var(--border)}
+th{color:var(--sub);font-weight:500;font-size:13px}
+.bar{background:var(--primary);height:14px;border-radius:3px;min-width:2px}
+.bar-ok{background:var(--success)}.bar-fail{background:var(--danger)}
+.tag{display:inline-block;padding:2px 8px;border-radius:10px;font-size:12px}
+.tag-ok{background:#238636;color:#fff}
+.tag-fail{background:#da3633;color:#fff}
+.tag-in{background:#30363d;color:#8b949e}
+#ts{float:right;color:var(--sub);font-size:.8em;margin-top:6px}
+.bar-row{display:flex;align-items:center;gap:10px;margin:4px 0}
+.bar-wrap{flex:1;background:var(--bg);border-radius:4px;height:16px;overflow:hidden}
+.lang-btn{background:transparent;border:1px solid var(--border);border-radius:4px;padding:2px 8px;font-size:12px;cursor:pointer;color:var(--sub)}
+.lang-btn.active{border-color:var(--primary);color:var(--primary)}
+@media(max-width:800px){body{padding:12px}}
+</style>
+</head>
+<body>
+<div class="nav">
+<span><a href="#/" id="brandLink">ShanHai Gateway</a></span>
+<span id="navLinks"></span>
+</div>
+<div class="container" id="app"><p class="sub">Loading...</p></div>
+<script>
+const API=location.origin;
+let lang=localStorage.getItem("lang")||"zh";
+
+const T={
+zh:{dashboard:"仪表盘",docs:"文档",wbPanel:"WorkBuddy",loading:"加载中...",totalRequests:"总请求数",success:"成功",failed:"失败",last60s:"近60秒",rpm:"RPM",today:"今日",todayTokens:"今日 Token",monthTokens:"本月 Token",hourTokens:"本小时 Token",totalTokens:"累计 Token",cachedTokens:"本月缓存命中",costUsd:"本月估算费用",byBackend:"轮转模型",recentRequests:"最近请求",time:"时间",backend:"后端",status:"状态",latency:"耗时",inChars:"入字符",outChars:"出字符",fallback:"兜底模型",concurrency:"并发",waiters:"排队",maxConcurrency:"上限",circuit:"熔断",cooldown:"冷却",seq:"序号",rid:"请求ID",model:"模型",stream:"流式",quotaCenter:"配额指挥舱",wRolling:"5h",wSession:"会话",wWeek:"周",wMonth:"月",resetIn:"回血",quotaNoKey:"缺火山 AK/SK",quotaErr:"查询失败",quotaStale:"未取到新值，沿用",quotaUpdated:"数据更新",quotaSrc:"数据源：OpenCode 官方用量 API + 火山方舟 OpenAPI（实现参考 dsh-quota-panel / token-monitor，MIT，出处声明见 scripts/quota_probe.py）"},
+en:{dashboard:"Dashboard",docs:"Docs",wbPanel:"WorkBuddy",loading:"Loading...",totalRequests:"Total Requests",success:"Success",failed:"Failed",last60s:"Last 60s",rpm:"RPM",today:"Today",todayTokens:"Today Tokens",monthTokens:"Month Tokens",hourTokens:"Hour Tokens",totalTokens:"Total Tokens",cachedTokens:"Month Cached",costUsd:"Month Est. Cost",byBackend:"Primary Backends",recentRequests:"Recent Requests",time:"Time",backend:"Backend",status:"Status",latency:"Latency",inChars:"In",outChars:"Out",fallback:"Fallback",concurrency:"Concurrency",waiters:"Waiters",maxConcurrency:"Max",circuit:"Circuit",cooldown:"Cooldown",seq:"Seq",rid:"RID",model:"Model",stream:"Stream",quotaCenter:"Quota Center",wRolling:"5h",wSession:"Session",wWeek:"Week",wMonth:"Month",resetIn:"Resets",quotaNoKey:"Missing Volc AK/SK",quotaErr:"Query failed",quotaStale:"No fresh value, keeping",quotaUpdated:"Data at",quotaSrc:"Sources: OpenCode official usage API + Volcengine Ark OpenAPI (implemented with reference to dsh-quota-panel / token-monitor, MIT — notices in scripts/quota_probe.py)"}
+};
+function t(k){return T[lang][k]||k}
+
+function setLang(l){lang=l;localStorage.setItem("lang",l);document.documentElement.lang=l==="zh"?"zh":"en";render()}
+
+function renderNav() {
+  // wb-panel 公网地址不入库（私有基础设施）：仓库里是 RFC5737 文档占位。
+  // 恢复自己的导航：浏览器 console 执行一次
+  //   localStorage.setItem("wbPanelUrl", "http://<真实地址>:18011/panel/")
+  const WB_PANEL_URL = localStorage.getItem("wbPanelUrl") || "http://203.0.113.9:18011/panel/";
+  const nav = document.getElementById("navLinks");
+  const langBtn = `<span style="margin-left:16px"><button class="lang-btn ${lang==='zh'?'active':''}" onclick="setLang('zh')">中</button><button class="lang-btn ${lang==='en'?'active':''}" onclick="setLang('en')">EN</button></span>`;
+  nav.innerHTML = `<a href="#/" class="${location.hash==='#/'||location.hash===''?'active':''}">${t("dashboard")}</a><a href="#/docs" class="${location.hash==='#/docs'?'active':''}">${t("docs")}</a><a href="${WB_PANEL_URL}" target="_blank" rel="noopener" title="WorkBuddy Panel（公网）">${t("wbPanel")}</a>${langBtn}`;
+}
+
+const tagM={ok:'tag-ok',fail:'tag-fail',in_flight:'tag-in'};
+const tag=(s)=>`<span class="tag ${tagM[s]||'tag-in'}">${s}</span>`;
+const kb=(n)=>(n/1024).toFixed(1);
+const si=(n)=>n===undefined?'-':n;
+function fmtTok(n){
+  n=Number(n)||0;
+  if(lang==='zh'){
+    if(n>=1e8)return (n/1e8).toFixed(2)+'亿';
+    if(n>=1e4)return (n/1e4).toFixed(2)+'万';
+    return String(n);
+  }
+  if(n>=1e9)return (n/1e9).toFixed(2)+'B';
+  if(n>=1e6)return (n/1e6).toFixed(2)+'M';
+  if(n>=1e3)return (n/1e3).toFixed(1)+'k';
+  return String(n);
+}
+
+// 最近请求滚动窗口：新记录插到顶部，超过上限从底部删最旧
+let logKeys=new Set();
+const LOG_MAX=200;
+function logKey(a){return `${a.Rid||''}:${a.Seq||0}:${a.Status||0}:${a.LatMs||0}:${a.OK?'1':'0'}`}
+function recentRowHTML(a){
+  const cls=a.OK?'ok':a.Status>=400?'err':'';
+  return `<tr data-key="${logKey(a)}">
+    <td>${a.Rid?.slice(0,8)||'-'}</td>
+    <td>${a.Backend||'-'}</td>
+    <td>${a.Model||'-'}</td>
+    <td>${a.Stream?'S':'-'}</td>
+    <td class="${cls}">${a.Status||'-'}</td>
+    <td>${a.LatMs||0}ms</td>
+    <td>${a.Class||'-'}</td>
+    <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis">${a.Err||'-'}</td>
+  </tr>`;
+}
+function updateRecentLogs(logs){
+  const tbody=document.querySelector('#recentLogs tbody');
+  if(!tbody||!Array.isArray(logs))return;
+  const container=tbody.closest('.card');
+  // 用户是否停在顶部（贴顶时才自动跟随新记录）
+  const atTop=!container||container.scrollTop<=24;
+  const ph=tbody.querySelector('td[colspan]');
+  if(ph)ph.parentElement.remove();
+  // logs 为最新在前；挑出没渲染过的，倒序 prepend 使最新落在顶部
+  const fresh=[];
+  for(const a of logs){
+    const k=logKey(a);
+    if(logKeys.has(k))continue;
+    logKeys.add(k);
+    fresh.push(a);
+  }
+  for(let i=fresh.length-1;i>=0;i--){
+    tbody.insertAdjacentHTML('afterbegin',recentRowHTML(fresh[i]));
+  }
+  // 超过上限：从底部删最旧，同步清 key
+  while(tbody.children.length>LOG_MAX){
+    const last=tbody.lastElementChild;
+    if(!last)break;
+    logKeys.delete(last.getAttribute('data-key'));
+    tbody.removeChild(last);
+  }
+  if(!tbody.children.length){
+    tbody.innerHTML='<tr><td colspan=8 class="sub">No data</td></tr>';
+  }
+  if(atTop&&container)container.scrollTop=0;
+}
+
+async function load(){
+  try{
+    const res=await fetch(`${API}/api/stats`);
+    // 401 = 登录失效（网关重启会清空全部内存 session）。必须跳登录页：
+    // 否则每 2s 静默吃一个 401、页面永远冻在旧数据上，看起来像"不自动刷新"。
+    if(res.status===401){if(location.pathname!=='/login')location.href='/login';return;}
+    if(!res.ok)throw new Error('Failed to fetch');
+    const d=await res.json();
+    
+    // 总览卡片
+    const total={req:0,ok:0,fail:0};
+    d.backends.forEach(b=>{
+      total.req+=b.attempts||0;
+      total.ok+=b.success||0;
+      total.fail+=b.failed||0;
+    });
+    
+    document.getElementById('cards').innerHTML=[
+      [total.req,t('totalRequests'),'blue'],
+      [total.ok,t('success'),'ok'],
+      [total.fail,t('failed'),'err'],
+      [d.rpm||0,t('rpm'),'warn'],
+    ].map(([n,l,c])=>`<div class="stat"><div class="num ${c}">${n}</div><div class="label">${l}</div></div>`).join('');
+    
+    // token 用量卡片（费用只留顶部总估算一张；分后端明细 09-27 用户裁撤）
+    try{
+      const tk=await(await fetch(`${API}/api/tokens`)).json();
+      const cached=(tk.by_backend||[]).reduce((s,x)=>s+(x.cached_tokens||0),0);
+      document.getElementById('tokencards').innerHTML=[
+        [fmtTok(tk.hour_tokens),t('hourTokens'),'blue'],
+        [fmtTok(tk.today_tokens),t('todayTokens'),'ok'],
+        [fmtTok(tk.month_tokens),t('monthTokens'),'warn'],
+        [fmtTok(tk.total_tokens),t('totalTokens'),''],
+        [fmtTok(cached),t('cachedTokens'),'ok'],
+        ['$'+(tk.month_cost_usd||0).toFixed(2),t('costUsd'),'warn'],
+      ].map(([n,l,c])=>`<div class="stat"><div class="num ${c}">${n}</div><div class="label">${l}</div></div>`).join('');
+    }catch(e){}
+    
+    // 后端状态 - 分成轮转和兜底两类
+    const renderBackendRow = (b) => {
+      const concPct=b.concurrency?Math.round((b.in_flight||0)/b.concurrency*100):0;
+      const concColor=concPct>=90?'var(--danger)':concPct>=70?'var(--warn)':'var(--success)';
+      return `<tr>
+        <td>${b.name}</td>
+        <td><div class="bar-row"><div class="bar-wrap"><div class="bar" style="width:${concPct}%;background:${concColor}"></div></div>${b.in_flight||0}/${b.concurrency}</div></td>
+        <td>${b.waiters||0}</td>
+        <td class="ok">${b.success||0}</td>
+        <td class="err">${b.failed||0}</td>
+        <td>${b.circuit_open?'<span class="tag tag-fail">OPEN</span>':'<span class="tag tag-ok">OK</span>'}</td>
+        <td>${b.cooldown_remain_s>0?Math.round(b.cooldown_remain_s)+'s':'-'}</td>
+      </tr>`;
+    };
+    
+    const primary=d.backends.filter(b=>!b.is_fallback);
+    const fallback=d.backends.filter(b=>b.is_fallback);
+    
+    document.getElementById('primaryBackends').innerHTML=primary.map(renderBackendRow).join('')||'<tr><td colspan=7 class="sub">No data</td></tr>';
+    document.getElementById('fallbackBackend').innerHTML=fallback.map(renderBackendRow).join('')||'<tr><td colspan=7 class="sub">No data</td></tr>';
+    
+    // 最近请求日志（增量滚动：新记录进顶部，超限删最旧）
+    const logRes=await fetch(`${API}/api/recent`);
+    if(logRes.ok){
+      updateRecentLogs(await logRes.json());
+    }
+    
+  }catch(e){
+    console.error('Load failed:',e);
+  }
+}
+
+// ── 配额指挥舱：数据来自 scripts/quota_probe.py 写的静态 quota.json ──
+let quotaData=null;
+function fmtCountdown(iso){
+  if(!iso)return '-';
+  const d=new Date(iso)-Date.now();
+  if(isNaN(d))return '-';
+  if(d<=0)return lang==='zh'?'已回血':'reset';
+  const days=Math.floor(d/86400000),h=Math.floor(d%86400000/3600000),m=Math.floor(d%3600000/60000);
+  return lang==='zh'?`${days>0?days+'天':''}${h}时${m}分`:`${days>0?days+'d ':''}${h}h${m}m`;
+}
+function winRow(label,pct,resetsAt){
+  const p=Math.max(0,Math.min(100,Number(pct)||0));
+  const color=p>=90?'var(--danger)':p>=70?'var(--warn)':'var(--success)';
+  return `<div class="bar-row"><span style="width:36px;color:var(--sub);font-size:12px">${label}</span>
+    <div class="bar-wrap"><div class="bar" style="width:${p}%;background:${color}"></div></div>
+    <span style="width:36px;text-align:right;font-size:12px">${p}%</span>
+    <span style="width:104px;text-align:right;color:var(--sub);font-size:11px">${t('resetIn')} ${fmtCountdown(resetsAt)}</span></div>`;
+}
+function quotaCard(title,item,labels){
+  if(!item)return '';
+  let inner='';
+  if(item.status==='ok'||item.status==='stale'){
+    const w=item.windows||{};
+    inner=(labels.rolling&&w.rolling?winRow(labels.rolling,w.rolling.percent,w.rolling.resetsAt):'')
+      +(labels.weekly&&w.weekly?winRow(labels.weekly,w.weekly.percent,w.weekly.resetsAt):'')
+      +(labels.monthly&&w.monthly?winRow(labels.monthly,w.monthly.percent,w.monthly.resetsAt):'');
+    if(!inner)inner=`<div class="sub">${t('quotaErr')}</div>`;
+    else if(item.status==='stale')inner+=`<div class="sub warn" style="font-size:11px;margin-top:6px">${t('quotaStale')} ${item.staleAt?new Date(item.staleAt).toLocaleTimeString():''} · ${(item.msg||'').slice(0,70)}</div>`;
+  }else if(item.status==='need_credentials'){
+    inner=`<div class="sub warn">${t('quotaNoKey')}</div><div class="sub" style="font-size:11px">${(item.msg||'').slice(0,90)}</div>`;
+  }else{
+    inner=`<div class="sub err">${t('quotaErr')}</div><div class="sub" style="font-size:11px">${(item.msg||'').slice(0,90)}</div>`;
+  }
+  return `<div class="stat" style="text-align:left;padding:14px">
+    <div style="font-weight:600;margin-bottom:8px">${title}</div>${inner}</div>`;
+}
+async function loadQuota(){
+  try{
+    const r=await fetch(`${API}/quota.json`);
+    if(!r.ok)return;
+    quotaData=await r.json();
+  }catch(e){return}
+  renderQuota();
+}
+function renderQuota(){
+  const el=document.getElementById('quotaCards');
+  if(!el||!quotaData)return;
+  const q=quotaData;
+  const ocL={rolling:t('wRolling'),weekly:t('wWeek'),monthly:t('wMonth')};
+  const codingL={rolling:t('wSession'),weekly:t('wWeek'),monthly:t('wMonth')};
+  let html='';
+  for(const [name,item] of Object.entries(q.opencode||{})){
+    html+=quotaCard(`opencode · ${name}`,item,ocL);
+  }
+  html+=quotaCard('volc · Coding (volc_pro)',(q.volc||{}).coding,codingL);
+  html+=quotaCard('volc · Agent (volc_plan)',(q.volc||{}).agent,ocL);
+  el.innerHTML=html||`<div class="sub">${t('loading')}</div>`;
+  const ts=document.getElementById('quotaTs');
+  if(ts)ts.textContent=q.generated_at?`${t('quotaUpdated')} ${new Date(q.generated_at).toLocaleString()}`:'';
+}
+
+function renderDashboard(){
+  document.getElementById('app').innerHTML=`
+    <div class="card">
+      <h1>${t('dashboard')}</h1>
+      <div id="ts"></div>
+    </div>
+    
+    <div class="grid" id="cards"></div>
+    <div class="grid" id="tokencards"></div>
+    
+    <div class="card">
+      <h2>${t('quotaCenter')}<span id="quotaTs" style="float:right;font-weight:400;font-size:12px;color:var(--sub)"></span></h2>
+      <div class="grid" id="quotaCards" style="grid-template-columns:repeat(auto-fit,minmax(280px,1fr))"><div class="sub">${t('loading')}</div></div>
+      <div class="sub" style="margin-top:10px;font-size:12px">${t('quotaSrc')}</div>
+    </div>
+    
+    <div class="card">
+      <h2>${t('byBackend')}</h2>
+      <table id="backends">
+        <thead><tr>
+          <th>${t('backend')}</th>
+          <th>${t('concurrency')}</th>
+          <th>${t('waiters')}</th>
+          <th>${t('success')}</th>
+          <th>${t('failed')}</th>
+          <th>${t('circuit')}</th>
+          <th>${t('cooldown')}</th>
+        </tr></thead>
+        <tbody id="primaryBackends"></tbody>
+      </table>
+    </div>
+    
+    <div class="card">
+      <h2>${t('fallback')}</h2>
+      <table>
+        <thead><tr>
+          <th>${t('backend')}</th>
+          <th>${t('concurrency')}</th>
+          <th>${t('waiters')}</th>
+          <th>${t('success')}</th>
+          <th>${t('failed')}</th>
+          <th>${t('circuit')}</th>
+          <th>${t('cooldown')}</th>
+        </tr></thead>
+        <tbody id="fallbackBackend"></tbody>
+      </table>
+    </div>
+    
+    <div class="card" style="max-height:400px;overflow-y:auto">
+      <h2>${t('recentRequests')}</h2>
+      <table id="recentLogs">
+        <thead><tr>
+          <th>${t('rid')}</th>
+          <th>${t('backend')}</th>
+          <th>${t('model')}</th>
+          <th>${t('stream')}</th>
+          <th>${t('status')}</th>
+          <th>${t('latency')}</th>
+          <th>Class</th>
+          <th>Error</th>
+        </tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  `;
+  renderNav();
+  logKeys=new Set();   // 重建面板：重置滚动窗口
+  load();
+  loadQuota();   // 语言切换/重进页面立即重画配额卡（数据本体 30s 才拉一次）
+}
+
+function renderDocs(){
+  const base=location.origin;
+  document.getElementById('app').innerHTML=`
+    <div class="card"><h1>${lang==='zh'?'文档':'Documentation'}</h1><p class="sub">ShanHai Gateway ${lang==='zh'?'使用说明':'User Guide'}</p></div>
+    
+    <div class="card"><h2>${lang==='zh'?'快速开始':'Quick Start'}</h2>
+    <table>
+    <tr><th>${lang==='zh'?'参数':'Parameter'}</th><th>${lang==='zh'?'值':'Value'}</th></tr>
+    <tr><td style="font-weight:600">Base URL</td><td style="font-family:monospace;background:var(--bg);padding:4px 8px;border-radius:4px">${base}</td></tr>
+    <tr><td style="font-weight:600">Model</td><td style="font-family:monospace;background:var(--bg);padding:4px 8px;border-radius:4px">auto</td></tr>
+    <tr><td style="font-weight:600">Authorization</td><td style="font-family:monospace;background:var(--bg);padding:4px 8px;border-radius:4px" id="qsAuth">${lang==='zh'?'读取中…':'loading…'}</td></tr>
+    </table></div>
+
+    <div class="card"><h2>${lang==='zh'?'静态 API Key':'Static API Key'}</h2>
+    <p class="sub">${lang==='zh'
+      ? '其他设备（脚本 / OpenAI SDK）走公网口时不用登录换 cookie，带上这把 key 就行；网关重启也不会让它失效。'
+      : 'For other devices (scripts / OpenAI SDK) on the public port: no login, no cookie — just send this key. Gateway restarts do not invalidate it.'}</p>
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:12px">
+      <code id="dashKeyVal" style="font-size:14px;word-break:break-all;user-select:all">${lang==='zh'?'读取中…':'loading…'}</code>
+      <button id="dashKeyCopy" style="margin-left:auto;background:var(--primary);color:#fff;border:0;border-radius:6px;padding:7px 16px;font-size:13px;cursor:pointer;white-space:nowrap;display:none">${lang==='zh'?'复制':'Copy'}</button>
+    </div>
+    <p class="sub" style="margin-top:12px">${lang==='zh'?'请求头写法':'Header'}&nbsp;&nbsp;<code style="background:var(--bg);padding:2px 6px;border-radius:4px">Authorization: Bearer &lt;key&gt;</code></p>
+    <p class="sub" id="dashKeyNote">${lang==='zh'?'读取中…':'loading…'}</p>
+    </div>
+
+    <div class="card"><h2>cURL ${lang==='zh'?'示例':'Example'}</h2>
+    <div id="curlEx" style="background:var(--bg);padding:12px;border-radius:6px;font-family:monospace;font-size:13px;white-space:pre;overflow-x:auto;border:1px solid var(--border)"></div>
+    <p class="sub" style="margin-top:10px">${lang==='zh'
+      ? '浏览器打开看板走的是账号密码登录（cookie），不需要 key。'
+      : 'Opening the dashboard in a browser uses the password login (cookie) — no key needed.'}</p>
+    </div>
+
+    <div class="card"><h2>OpenAI SDK ${lang==='zh'?'示例':'Example'}</h2>
+    <div id="sdkEx" style="background:var(--bg);padding:12px;border-radius:6px;font-family:monospace;font-size:13px;white-space:pre;overflow-x:auto;border:1px solid var(--border)"></div>
+    </div>
+    
+    <div class="card"><h2>${lang==='zh'?'技术架构':'Architecture'}</h2>
+    <table>
+    <tr><th>${lang==='zh'?'层级':'Layer'}</th><th>技术</th><th>${lang==='zh'?'说明':'Role'}</th></tr>
+    <tr><td>${lang==='zh'?'网关':'Gateway'}</td><td>Go</td><td>${lang==='zh'?'路由/429降级/SSE透传/metrics':'Routing/429/SSE/metrics'}</td></tr>
+    <tr><td>${lang==='zh'?'路由策略':'Routing'}</td><td>${lang==='zh'?'配置驱动':'Config-driven'}</td><td id="routingStrategy" class="sub">${lang==='zh'?'读取中…':'loading…'}</td></tr>
+    <tr><td>Frontend</td><td>HTML + JS (go:embed)</td><td>${lang==='zh'?'嵌入Go二进制，单文件部署':'Embedded in Go binary'}</td></tr>
+    </table></div>
+    
+    <div class="card"><h2>${lang==='zh'?'端点一览':'Endpoints'}</h2>
+    <table>
+    <tr><th>Endpoint</th><th>Method</th><th>${lang==='zh'?'说明':'Description'}</th></tr>
+    <tr><td><code>/v1/chat/completions</code></td><td>POST</td><td>${lang==='zh'?'LLM 调用（OpenAI 兼容）':'LLM call (OpenAI-compatible)'}</td></tr>
+    <tr><td><code>/v1/models</code></td><td>GET</td><td>${lang==='zh'?'可用模型':'Available models'}</td></tr>
+    <tr><td><code>/api/stats</code></td><td>GET</td><td>${lang==='zh'?'运行指标':'Metrics'}</td></tr>
+    <tr><td><code>/admin/backend/{name}</code></td><td>GET/POST</td><td>${lang==='zh'?'后端管理':'Backend management'}</td></tr>
+    <tr><td><code>/api/dashkey</code></td><td>GET</td><td>${lang==='zh'?'取静态 API Key（本页用）':'Get static API key (used by this page)'}</td></tr>
+    <tr><td><code>/health</code></td><td>GET</td><td>${lang==='zh'?'健康检查':'Health'}</td></tr>
+    </table></div>
+  `;
+  renderNav();
+  loadRoutingInfo();   // 路由策略那行从 /api/stats 实时拼，不在前端写死后端名
+  loadDashKey();       // key 从后端现取（改 DASH_TOKEN 后文档自动跟着变，不写死在前端）
+}
+
+// 把「主轮转 ↔ 主轮转 轮转，N 个兜底」按当前实际载入的后端拼出来
+async function loadRoutingInfo(){
+  const el=document.getElementById('routingStrategy');
+  if(!el)return;
+  try{
+    const d=await(await fetch(`${API}/api/stats`)).json();
+    const bs=d.backends||[];
+    const prim=bs.filter(b=>b.is_primary&&!b.is_fallback).map(b=>b.name);
+    const fb=bs.filter(b=>b.is_fallback).length;
+    el.classList.remove('sub');
+    el.textContent = prim.length
+      ? prim.join(' ↔ ') + (lang==='zh'?` 轮转，${fb} 个兜底`:` rotation, ${fb} fallback`)
+      : (lang==='zh'?'无主轮转后端':'no primary backend');
+  }catch(e){
+    el.textContent = lang==='zh'?'读取失败':'unavailable';
+  }
+}
+
+// 文档页：静态 API key 从后端现取（不写死在前端，改 DASH_TOKEN 后文档自动跟着变），
+// 顺手把「快速开始 / cURL / OpenAI SDK」三处的 key 一起填上。
+async function loadDashKey(){
+  const val=document.getElementById('dashKeyVal');
+  if(!val)return;
+  const note=document.getElementById('dashKeyNote');
+  const btn=document.getElementById('dashKeyCopy');
+  const qs =document.getElementById('qsAuth');
+  const zh =lang==='zh';
+  let tok='', state='off';   // off=通道关闭 / err=没读到（401 或网络错，主循环 2s 内会把页面踢回登录页）
+  try{
+    const res=await fetch(`${API}/api/dashkey`);
+    if(!res.ok) throw new Error('http '+res.status);
+    const d=await res.json();
+    if(d.enabled && d.token){ tok=d.token; state='on'; }
+  }catch(e){ state='err'; }
+
+  if(state!=='on'){
+    val.textContent = state==='err'
+      ? (zh?'未读取到（未登录或接口不可达）':'unavailable (not logged in or endpoint unreachable)')
+      : (zh?'未启用（DASH_TOKEN 被设成空串）':'disabled (DASH_TOKEN is empty)');
+    if(btn)btn.style.display='none';
+    if(qs)qs.textContent = state==='err'
+      ? (zh?'（未读取到，见上方「静态 API Key」卡）':'(not fetched — see the "Static API Key" card above)')
+      : (zh?'（key 未启用，浏览器走登录 cookie）':'(key disabled; browser uses login cookie)');
+    if(note)note.textContent = state==='err'
+      ? (zh?'稍等：登录态失效时主循环会自动跳回登录页。':'Hang on: an expired session makes the main loop bounce you to the login page.')
+      : (zh?'把 DASH_TOKEN 环境变量设成非空值即可重新开启这条通道。'
+          :'Set the DASH_TOKEN env var to a non-empty value to re-enable this channel.');
+    fillDashExamples('', zh);
+    return;
+  }
+
+  val.textContent=tok;
+  if(qs){ qs.textContent='Bearer '+tok; qs.style.wordBreak='break-all'; }
+  if(note)note.textContent = zh
+    ? '换 key：改 systemd unit 里的 DASH_TOKEN（设成空串 = 关掉这条通道）后重启网关。局域网 18006 本就免登录，用不到 key。'
+    : 'Rotate it via DASH_TOKEN in the systemd unit (empty string disables the channel), then restart the gateway. LAN :18006 needs no key.';
+  fillDashExamples(tok, zh);
+
+  if(btn){
+    btn.style.display='';
+    btn.textContent = zh?'复制':'Copy';
+    btn.onclick=async()=>{
+      let ok=false;
+      try{
+        if(navigator.clipboard && window.isSecureContext){ await navigator.clipboard.writeText(tok); ok=true; }
+        else{
+          const ta=document.createElement('textarea');
+          ta.value=tok; ta.style.position='fixed'; ta.style.opacity='0';
+          document.body.appendChild(ta); ta.select();
+          ok=document.execCommand('copy'); ta.remove();
+        }
+      }catch(e){ ok=false; }
+      btn.textContent = ok ? (zh?'已复制 ✓':'Copied ✓') : (zh?'复制失败，请手动选中':'Copy failed, select manually');
+      setTimeout(()=>{btn.textContent = zh?'复制':'Copy';},1600);
+    };
+  }
+}
+
+// 两个示例块按 key / 语言重画（空 key 时留占位符，保证页面不空着）
+function fillDashExamples(tok, zh){
+  const base=location.origin;
+  const key=tok||'<你的 key | your key>';
+  const ex=document.getElementById('curlEx');
+  if(ex){
+    ex.textContent =
+      'curl '+base+'/v1/chat/completions \\\n'+
+      '  -H "Content-Type: application/json" \\\n'+
+      '  -H "Authorization: Bearer '+key+'" \\\n'+
+      "  -d '{\n"+
+      '    "model": "auto",\n'+
+      '    "messages": [{"role": "user", "content": "'+(zh?'你好':'hello')+'"}],\n'+
+      '    "max_tokens": 256\n'+
+      "  }'";
+  }
+  const sdk=document.getElementById('sdkEx');
+  if(sdk){
+    sdk.textContent =
+      'from openai import OpenAI\n\n'+
+      'client = OpenAI(\n'+
+      '    base_url="'+base+'/v1",\n'+
+      '    api_key="'+key+'",   # 就是上面那把 key / the key above\n'+
+      ')\n'+
+      'r = client.chat.completions.create(\n'+
+      '    model="auto",\n'+
+      '    messages=[{"role": "user", "content": "'+(zh?'你好':'hello')+'"}],\n'+
+      ')\n'+
+      'print(r.choices[0].message.content)';
+  }
+}
+
+function renderPage(){
+  const hash=location.hash||"#/";
+  if(hash==="#/docs")renderDocs();
+  else renderDashboard();
+}
+
+function render(){renderPage();}
+
+document.documentElement.lang=lang==="zh"?"zh":"en";
+window.addEventListener("hashchange",()=>{renderNav();renderPage();});
+render();
+setInterval(load,2000);
+loadQuota();            // 首次进页面立刻拉一次配额
+setInterval(loadQuota,30000);  // 配额 30s 刷新（上游窗口变化慢，不跟 2s 主循环）
+</script>
+</body>
+</html>

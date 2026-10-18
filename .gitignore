@@ -1,0 +1,29 @@
+# ── 运行态产物：不进 git ────────────────────────────────────────
+# SQLite 在产留存库（captures 含请求原文，持续增长）与日志属数据不是配置；
+# 灾备语义 = 代码 + 挂载的配置目录即可复活（见 README 四/八）。
+runtime/
+data/
+logs/
+*.db
+*.db-shm
+*.db-wal
+nohup.out
+
+# ── 构建产物 / 回滚备份 ─────────────────────────────────────────
+# 二进制随时 make build 复现；shg.old 是部署轮换时的上一版二进制备份
+shg
+shg.new
+shg.old
+
+# ── 真实密钥：仓库只留模板（config/*.example.json）──────────────
+# 真实 backends.json / keys.json 只存在于挂载卷（docker: ./runtime/config）
+# 或本地未跟踪目录，key 的源头账本在 ~/keys/keys.md；仓库与镜像内零密钥，
+# 这是将来开源/公开的硬前提（旧 shadow-config 入库语义自 shg 起废止）。
+config/backends.json
+config/keys.json
+config/backends.blocked.json
+config/quota.env
+
+# ── Python ─────────────────────────────────────────────────────
+__pycache__/
+*.pyc

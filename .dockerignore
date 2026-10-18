@@ -1,0 +1,22 @@
+# 构建上下文瘦身：镜像内只需要源码与 web 静态资源（go:embed）
+.git/
+runtime/
+data/
+logs/
+shadow-data/
+shadow-config/
+*.db
+*.db-shm
+*.db-wal
+shg
+shg.new
+shg.old
+gateway
+gateway.old
+nohup.out
+config/backends.json
+config/keys.json
+config/backends.blocked.json
+config/quota.env
+__pycache__/
+*.pyc
