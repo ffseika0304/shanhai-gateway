@@ -33,12 +33,12 @@ import (
 	"net/http"
 	"time"
 
-	"shanhaigateway/internal/config"
-	"shanhaigateway/internal/core/store"
-	"shanhaigateway/internal/service/affinity"
-	"shanhaigateway/internal/service/apikey"
-	"shanhaigateway/internal/service/auth"
-	"shanhaigateway/internal/service/routing"
+	"shanhai-gateway/internal/config"
+	"shanhai-gateway/internal/core/store"
+	"shanhai-gateway/internal/service/affinity"
+	"shanhai-gateway/internal/service/apikey"
+	"shanhai-gateway/internal/service/auth"
+	"shanhai-gateway/internal/service/routing"
 )
 
 // Handlers 把路由决策、代理执行、登录会话、下游 key、看板数据聚合到一起。

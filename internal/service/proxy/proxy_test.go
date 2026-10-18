@@ -15,9 +15,9 @@ import (
 	"testing"
 	"time"
 
-	"shanhaigateway/internal/core/store"
-	"shanhaigateway/internal/core/upstream"
-	"shanhaigateway/internal/service/routing"
+	"shanhai-gateway/internal/core/store"
+	"shanhai-gateway/internal/core/upstream"
+	"shanhai-gateway/internal/service/routing"
 )
 
 // 测试纪律：所有上游都是 httptest 打桩，绝不打真实上游。

@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"time"
 
-	"shanhaigateway/internal/core/store"
+	"shanhai-gateway/internal/core/store"
 )
 
 // Service 会话服务：登录态的唯一管理者。

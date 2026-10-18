@@ -17,9 +17,9 @@ import (
 	"testing"
 	"time"
 
-	"shanhaigateway/internal/core/errclass"
-	"shanhaigateway/internal/core/upstream"
-	"shanhaigateway/internal/service/affinity"
+	"shanhai-gateway/internal/core/errclass"
+	"shanhai-gateway/internal/core/upstream"
+	"shanhai-gateway/internal/service/affinity"
 )
 
 // mkAffHandler 在 mkHandler 之上把亲和表装上（表的构造路径与生产装配一致：

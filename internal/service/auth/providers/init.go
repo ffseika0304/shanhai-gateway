@@ -10,7 +10,7 @@ package providers
 import (
 	"os"
 
-	"shanhaigateway/internal/service/auth"
+	"shanhai-gateway/internal/service/auth"
 )
 
 func init() {

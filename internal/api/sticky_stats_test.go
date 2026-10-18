@@ -12,9 +12,9 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"shanhaigateway/internal/core/upstream"
-	"shanhaigateway/internal/service/affinity"
-	"shanhaigateway/internal/service/routing"
+	"shanhai-gateway/internal/core/upstream"
+	"shanhai-gateway/internal/service/affinity"
+	"shanhai-gateway/internal/service/routing"
 )
 
 // statsBody 直接打 handleStats（不走 LAN 门：本测试只看形状），返回解码后的 JSON。

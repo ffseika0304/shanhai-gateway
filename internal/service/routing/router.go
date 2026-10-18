@@ -30,7 +30,7 @@ import (
 	"log"
 	"sync"
 
-	"shanhaigateway/internal/core/upstream"
+	"shanhai-gateway/internal/core/upstream"
 )
 
 // Router 一次请求的路由决策器：候选从哪来、首发给谁、失败往哪退。

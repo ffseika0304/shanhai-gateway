@@ -10,8 +10,8 @@ import (
 	"testing"
 	"time"
 
-	"shanhaigateway/internal/core/errclass"
-	"shanhaigateway/internal/core/upstream"
+	"shanhai-gateway/internal/core/errclass"
+	"shanhai-gateway/internal/core/upstream"
 )
 
 // ── 测试脚手架 ──────────────────────────────────────────────

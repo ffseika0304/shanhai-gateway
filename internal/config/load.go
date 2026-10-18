@@ -33,8 +33,8 @@ import (
 	"sync"
 	"time"
 
-	"shanhaigateway/internal/core/upstream"
-	"shanhaigateway/internal/runtime"
+	"shanhai-gateway/internal/core/upstream"
+	"shanhai-gateway/internal/runtime"
 )
 
 // envBackends 是「直接注入后端配置 JSON」的通道。

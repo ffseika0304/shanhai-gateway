@@ -30,8 +30,8 @@ import (
 	"net/http"
 	"sync"
 
-	"shanhaigateway/internal/core/errclass"
-	"shanhaigateway/internal/core/upstream"
+	"shanhai-gateway/internal/core/errclass"
+	"shanhai-gateway/internal/core/upstream"
 )
 
 // Usage 是从响应体解析出的用量（缝③的返回）。

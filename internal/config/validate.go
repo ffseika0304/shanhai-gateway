@@ -15,9 +15,9 @@ import (
 	"sync"
 	"time"
 
-	"shanhaigateway/internal/core/errclass"
-	"shanhaigateway/internal/core/upstream"
-	"shanhaigateway/internal/runtime"
+	"shanhai-gateway/internal/core/errclass"
+	"shanhai-gateway/internal/core/upstream"
+	"shanhai-gateway/internal/runtime"
 )
 
 // 本文件是 seika_llm_router/go/validate.go 的搬入版，判定逻辑逐条照搬：

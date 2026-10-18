@@ -31,7 +31,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"shanhaigateway/internal/core/errclass"
+	"shanhai-gateway/internal/core/errclass"
 )
 
 // Class 是错误分类。搬入前这一层直接用包内的 errClass；现在错误分类归 errclass 包

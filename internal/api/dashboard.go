@@ -22,10 +22,10 @@ import (
 	"os"
 	"time"
 
-	"shanhaigateway/internal/core/errclass"
-	"shanhaigateway/internal/core/store"
-	"shanhaigateway/internal/core/upstream"
-	"shanhaigateway/internal/service/affinity"
+	"shanhai-gateway/internal/core/errclass"
+	"shanhai-gateway/internal/core/store"
+	"shanhai-gateway/internal/core/upstream"
+	"shanhai-gateway/internal/service/affinity"
 )
 
 // Metrics 看板聚合器（原公版 metrics.go 的 Metrics，数据源换成 store）。

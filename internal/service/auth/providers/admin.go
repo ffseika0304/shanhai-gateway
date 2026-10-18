@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"time"
 
-	"shanhaigateway/internal/service/auth"
+	"shanhai-gateway/internal/service/auth"
 )
 
 // AdminName 注册表里的管理员登录标识。

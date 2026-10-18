@@ -7,8 +7,8 @@ import (
 	"time"
 	"unicode"
 
-	"shanhaigateway/internal/core/store"
-	"shanhaigateway/internal/core/upstream"
+	"shanhai-gateway/internal/core/store"
+	"shanhai-gateway/internal/core/upstream"
 )
 
 // partialRatioHasContent 是 partial（中途断连、内容已部分下发）的 partial_ratio

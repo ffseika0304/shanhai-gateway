@@ -10,9 +10,9 @@ import (
 	"testing"
 	"time"
 
-	"shanhaigateway/internal/core/errclass"
-	"shanhaigateway/internal/core/quirk"
-	"shanhaigateway/internal/core/upstream"
+	"shanhai-gateway/internal/core/errclass"
+	"shanhai-gateway/internal/core/quirk"
+	"shanhai-gateway/internal/core/upstream"
 )
 
 // ── 怪癖层接线（缝①Decorate / 缝②Classify / 缝③ParseUsage）全链测试 ──

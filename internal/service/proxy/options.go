@@ -24,7 +24,7 @@ import (
 	"io"
 	"time"
 
-	"shanhaigateway/internal/service/affinity"
+	"shanhai-gateway/internal/service/affinity"
 )
 
 // Options 是 proxy 的唯一注入点。

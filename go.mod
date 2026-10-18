@@ -1,4 +1,4 @@
-module shanhaigateway
+module shanhai-gateway
 
 go 1.27
 

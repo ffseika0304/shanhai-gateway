@@ -24,16 +24,16 @@ import (
 	"testing"
 	"time"
 
-	"shanhaigateway/internal/config"
-	"shanhaigateway/internal/core/store"
-	"shanhaigateway/internal/core/upstream"
-	"shanhaigateway/internal/runtime"
-	"shanhaigateway/internal/service/apikey"
-	"shanhaigateway/internal/service/auth"
-	_ "shanhaigateway/internal/service/auth/providers" // 触发登录方式注册（admin/dev）
-	"shanhaigateway/internal/service/proxy"
-	"shanhaigateway/internal/service/routing"
-	"shanhaigateway/web"
+	"shanhai-gateway/internal/config"
+	"shanhai-gateway/internal/core/store"
+	"shanhai-gateway/internal/core/upstream"
+	"shanhai-gateway/internal/runtime"
+	"shanhai-gateway/internal/service/apikey"
+	"shanhai-gateway/internal/service/auth"
+	_ "shanhai-gateway/internal/service/auth/providers" // 触发登录方式注册（admin/dev）
+	"shanhai-gateway/internal/service/proxy"
+	"shanhai-gateway/internal/service/routing"
+	"shanhai-gateway/web"
 )
 
 // deadBack 一个死后端名（127.0.0.1:1，发包即拒）。

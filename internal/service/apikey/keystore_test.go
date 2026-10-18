@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"shanhaigateway/internal/runtime"
+	"shanhai-gateway/internal/runtime"
 )
 
 // mockLookup 记账式假实现：只存 (userID, quota, used)，并数 Consume 调用。

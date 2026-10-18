@@ -13,10 +13,10 @@ import (
 	"strings"
 	"time"
 
-	"shanhaigateway/internal/core/errclass"
-	"shanhaigateway/internal/core/store"
-	"shanhaigateway/internal/runtime"
-	"shanhaigateway/internal/service/routing"
+	"shanhai-gateway/internal/core/errclass"
+	"shanhai-gateway/internal/core/store"
+	"shanhai-gateway/internal/runtime"
+	"shanhai-gateway/internal/service/routing"
 )
 
 // 首发轮转开关（ROTATE_START=0 可退回"严格按优先级"）。

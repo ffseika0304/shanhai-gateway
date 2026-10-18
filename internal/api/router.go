@@ -15,7 +15,7 @@ import (
 	"os"
 	"time"
 
-	"shanhaigateway/internal/runtime"
+	"shanhai-gateway/internal/runtime"
 )
 
 // API 装配器：持有 Handlers。

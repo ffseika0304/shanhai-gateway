@@ -6,8 +6,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"shanhaigateway/internal/core/errclass"
-	"shanhaigateway/internal/runtime"
+	"shanhai-gateway/internal/core/errclass"
+	"shanhai-gateway/internal/runtime"
 )
 
 // ===================== 熔断 / 冷却 / 慢探测 =====================

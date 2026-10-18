@@ -28,7 +28,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"shanhaigateway/internal/runtime"
+	"shanhai-gateway/internal/runtime"
 )
 
 // UserKeyLookup 是本包对「用户 key 存取」需要的最小能力面。

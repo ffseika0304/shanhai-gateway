@@ -42,7 +42,7 @@ import (
 	"sync"
 	"time"
 
-	"shanhaigateway/internal/runtime"
+	"shanhai-gateway/internal/runtime"
 )
 
 const (

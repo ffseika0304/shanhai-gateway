@@ -5,7 +5,7 @@ import (
 	"sync"
 	"testing"
 
-	"shanhaigateway/internal/core/upstream"
+	"shanhai-gateway/internal/core/upstream"
 )
 
 // ── AtomicRouter：原子换装的崩溃保护 ─────────────────────────────

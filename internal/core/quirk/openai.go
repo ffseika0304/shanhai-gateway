@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"shanhaigateway/internal/core/errclass"
-	"shanhaigateway/internal/core/upstream"
+	"shanhai-gateway/internal/core/errclass"
+	"shanhai-gateway/internal/core/upstream"
 )
 
 // OpenAI 是 OpenAI 兼容族的基准实现，也是「未指定 driver」时的默认。

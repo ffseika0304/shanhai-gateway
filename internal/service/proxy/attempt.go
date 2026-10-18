@@ -14,10 +14,10 @@ import (
 	"sync/atomic"
 	"time"
 
-	"shanhaigateway/internal/core/errclass"
-	"shanhaigateway/internal/core/quirk"
-	"shanhaigateway/internal/core/upstream"
-	"shanhaigateway/internal/runtime"
+	"shanhai-gateway/internal/core/errclass"
+	"shanhai-gateway/internal/core/quirk"
+	"shanhai-gateway/internal/core/upstream"
+	"shanhai-gateway/internal/runtime"
 )
 
 // 上游 User-Agent。原来在 main.go 的包级 var（UPSTREAM_UA env，默认一个

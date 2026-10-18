@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"shanhaigateway/internal/core/errclass"
+	"shanhai-gateway/internal/core/errclass"
 )
 
 // fakeClock 把包内 now 换成注入时钟，返回恢复函数。

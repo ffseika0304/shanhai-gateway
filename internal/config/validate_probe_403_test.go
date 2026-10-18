@@ -9,8 +9,8 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"shanhaigateway/internal/core/errclass"
-	"shanhaigateway/internal/core/upstream"
+	"shanhai-gateway/internal/core/errclass"
+	"shanhai-gateway/internal/core/upstream"
 )
 
 // 接线④：probe 的 403 分支改调 errclass.NoCreditBody（词表从本包内联挪成全局默认词汇）。

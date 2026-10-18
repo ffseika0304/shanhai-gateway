@@ -12,8 +12,8 @@ import (
 	"testing"
 	"time"
 
-	"shanhaigateway/internal/core/upstream"
-	"shanhaigateway/internal/runtime"
+	"shanhai-gateway/internal/core/upstream"
+	"shanhai-gateway/internal/runtime"
 )
 
 // ── 测试脚手架 ──────────────────────────────────────────────

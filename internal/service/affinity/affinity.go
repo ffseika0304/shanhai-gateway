@@ -33,7 +33,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"shanhaigateway/internal/core/errclass"
+	"shanhai-gateway/internal/core/errclass"
 )
 
 // 默认参数。都是给生产直接跑的值：Max 8192 足够容下一天内活跃会话数，

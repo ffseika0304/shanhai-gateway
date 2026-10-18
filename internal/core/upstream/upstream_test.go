@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"shanhaigateway/internal/core/errclass"
+	"shanhai-gateway/internal/core/errclass"
 )
 
 // ── 测试脚手架 ──────────────────────────────────────────────

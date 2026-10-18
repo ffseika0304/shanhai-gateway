@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"time"
 
-	"shanhaigateway/internal/service/auth"
+	"shanhai-gateway/internal/service/auth"
 )
 
 // DevName 注册表里的开发登录标识。

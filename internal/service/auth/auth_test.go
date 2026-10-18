@@ -9,9 +9,9 @@ import (
 	"strings"
 	"testing"
 
-	"shanhaigateway/internal/core/store"
-	"shanhaigateway/internal/service/auth"
-	_ "shanhaigateway/internal/service/auth/providers"
+	"shanhai-gateway/internal/core/store"
+	"shanhai-gateway/internal/service/auth"
+	_ "shanhai-gateway/internal/service/auth/providers"
 )
 
 func newTestService(t *testing.T) *auth.Service {

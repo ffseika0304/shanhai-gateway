@@ -14,7 +14,7 @@ import (
 	"strconv"
 	"strings"
 
-	"shanhaigateway/internal/service/auth"
+	"shanhai-gateway/internal/service/auth"
 )
 
 // userIDFrom 取鉴权层（auth.Service.AuthMiddleware）写入的 X-User-ID。

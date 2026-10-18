@@ -11,8 +11,8 @@ import (
 	"sync"
 	"testing"
 
-	"shanhaigateway/internal/core/errclass"
-	"shanhaigateway/internal/core/upstream"
+	"shanhai-gateway/internal/core/errclass"
+	"shanhai-gateway/internal/core/upstream"
 )
 
 // ── 测试内注册的假怪癖 ─────────────────────────────────────────
@@ -281,22 +281,22 @@ func TestDependencyDirectionOnlyCoreAndStdlib(t *testing.T) {
 		t.Fatalf("go list: %v", err)
 	}
 	allowed := map[string]bool{
-		"shanhaigateway/internal/core/errclass": true,
-		"shanhaigateway/internal/core/upstream": true,
+		"shanhai-gateway/internal/core/errclass": true,
+		"shanhai-gateway/internal/core/upstream": true,
 	}
 	for _, line := range strings.Split(strings.TrimSpace(string(out)), "\n") {
 		imp := strings.TrimSpace(line)
 		if imp == "" {
 			continue
 		}
-		if strings.HasPrefix(imp, "shanhaigateway/") && !allowed[imp] {
+		if strings.HasPrefix(imp, "shanhai-gateway/") && !allowed[imp] {
 			t.Errorf("core/quirk 不许 import %q：只许 errclass / upstream / 标准库", imp)
 		}
 	}
 	// 这两个是接口签名用到的依赖，必须在（防有人把接口搬走后忘了依赖）
 	for _, must := range []string{
-		"shanhaigateway/internal/core/errclass",
-		"shanhaigateway/internal/core/upstream",
+		"shanhai-gateway/internal/core/errclass",
+		"shanhai-gateway/internal/core/upstream",
 	} {
 		if !strings.Contains(string(out), must) {
 			t.Errorf("go list 输出里缺少 %q", must)
