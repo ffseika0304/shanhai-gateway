@@ -286,7 +286,7 @@ dashboard 导航里的「WorkBuddy Panel」是独立项目，不属于本仓库�
 
 - **是什么**：WorkBuddy2API Panel——把腾讯 CodeBuddy 账号包装成 OpenAI 兼容 API 的多账号网关 + Web 运维面板（账号池/熔断/会话粘性/保活）
 - **原仓**：<https://github.com/linguo2625469/workbuddy2api-panel>（fork 自 [Sliverkiss/workbuddy2api](https://github.com/Sliverkiss/workbuddy2api)，增强分支）
-- **接入方式**：管理面板部署机 `:18011`，公网入口 `http://<VPS>:18011/panel/`（**真实 IP 不入库**；dashboard 导航默认指 RFC5737 占位，部署者在自己浏览器 console 执行 `localStorage.setItem("wbPanelUrl","http://<真实地址>:18011/panel/")` 一次即恢复）；API 供源 `http://127.0.0.1:7863/v1`（进程 wb2api）——配置里 `account=workbuddy` 的后端全部走这里
+- **接入方式**：UI 与 API 同端口（进程 wb2api，绑 `*:7863`）——面板 `http://<部署机>:7863/panel/`，API 供源 `http://127.0.0.1:7863/v1`（配置里 `account=workbuddy` 的后端全部走这里）。dashboard 导航**默认指向同主机 `:7863/panel/`**，面板不在同机才需要在浏览器 console 执行 `localStorage.setItem("wbPanelUrl","http://<面板机>:7863/panel/")` 覆盖一次（真实地址不入库）。历史注意：旧版面板 UI 曾独立监听 `:18011`，现役已并入 7863——见到还写 18011 的文档一律过时
 - **运维纪律**：wb-panel / wb2api **不随本网关变更重启**，两边升级互不牵连
 
 ## 🛠️ 故障排查
