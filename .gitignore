@@ -1,9 +1,11 @@
 # ── 运行态产物：不进 git ────────────────────────────────────────
 # SQLite 在产留存库（captures 含请求原文，持续增长）与日志属数据不是配置；
 # 灾备语义 = 代码 + 挂载的配置目录即可复活（见 README 四/八）。
-runtime/
-data/
-logs/
+# 锚定到仓库根：未锚定的 runtime/ 会误伤 internal/runtime 源码包（v0.5.0 教训
+# ——公开仓曾因此缺入口与 runtime 包，克隆不可编译）。
+/runtime/
+/data/
+/logs/
 *.db
 *.db-shm
 *.db-wal
@@ -11,9 +13,10 @@ nohup.out
 
 # ── 构建产物 / 回滚备份 ─────────────────────────────────────────
 # 二进制随时 make build 复现；shg.old 是部署轮换时的上一版二进制备份
-shg
-shg.new
-shg.old
+# 同理锚定：裸 shg 曾把 cmd/shg/ 入口包一起忽略
+/shg
+/shg.new
+/shg.old
 
 # ── 真实密钥：仓库只留模板（config/*.example.json）──────────────
 # 真实 backends.json / keys.json 只存在于挂载卷（docker: ./runtime/config）
