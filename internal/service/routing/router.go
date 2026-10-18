@@ -96,6 +96,19 @@ func New(backends []*upstream.Backend) *Router {
 	}
 }
 
+// Names 返回全部在册后端名（含兜底，按配置顺序）。
+//
+// 这是**只读观测口**，给看板 stats 用：兜底后端不进 Candidates（候选表只含
+// 主轮转，这是路由契约），但看板的「兜底模型」表需要看到它们的并发/失败/
+// 熔断/冷却——不可用的兜底恰恰最需要可见。路由路径一律不许用这里的结果。
+func (rt *Router) Names() []string {
+	out := make([]string, 0, len(rt.backends))
+	for _, b := range rt.backends {
+		out = append(out, b.Name)
+	}
+	return out
+}
+
 // ByName 按名字找后端（线性扫，N 很小；搬入前同样没有建索引）。
 //
 // 调用方拿到候选名后要拿并发位、要看健康，都在这一层之外完成，

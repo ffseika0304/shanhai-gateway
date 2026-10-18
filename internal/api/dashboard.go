@@ -77,7 +77,10 @@ func (h *Handlers) handleStats(w http.ResponseWriter, r *http.Request) {
 		stickyStats = h.Affinity.Stats()
 		stickyCount = h.Affinity.CountPerBackend()
 	}
-	for _, name := range rt.Candidates() {
+	// 全量在册（主轮转 + 兜底）：兜底后端不进候选表（路由契约），但看板的
+	// 「兜底模型」表靠 is_fallback 过滤，熔断/冷却里的兜底恰恰最需要可见。
+	// sidecar 侧显式跳过 is_fallback 行，行为不受影响。
+	for _, name := range rt.Names() {
 		bk := rt.ByName(name)
 		if bk == nil {
 			continue
