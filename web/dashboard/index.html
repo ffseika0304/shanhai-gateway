@@ -56,10 +56,12 @@ function t(k){return T[lang][k]||k}
 function setLang(l){lang=l;localStorage.setItem("lang",l);document.documentElement.lang=l==="zh"?"zh":"en";render()}
 
 function renderNav() {
-  // wb-panel 公网地址不入库（私有基础设施）：仓库里是 RFC5737 文档占位。
-  // 恢复自己的导航：浏览器 console 执行一次
-  //   localStorage.setItem("wbPanelUrl", "http://<真实地址>:18011/panel/")
-  const WB_PANEL_URL = localStorage.getItem("wbPanelUrl") || "http://203.0.113.9:18011/panel/";
+  // wb-panel 地址不入库（私有基础设施）：默认**同主机回退**——看板在哪个地址
+  // 被打开，就指向那个主机的 :7863/panel/（wb2api 的 UI 与 API 同端口，绑 *:7863；
+  // 局域网直达；公网经 VPS 转发，仓库里没有任何真实 IP）。面板不在同机时才覆盖：
+  //   localStorage.setItem("wbPanelUrl", "http://<面板真实地址>/panel/")
+  // 注意：localStorage 按源隔离，改完要整页刷新；地址栏用哪个源就在哪个源设。
+  const WB_PANEL_URL = localStorage.getItem("wbPanelUrl") || `http://${location.hostname}:7863/panel/`;
   const nav = document.getElementById("navLinks");
   const langBtn = `<span style="margin-left:16px"><button class="lang-btn ${lang==='zh'?'active':''}" onclick="setLang('zh')">中</button><button class="lang-btn ${lang==='en'?'active':''}" onclick="setLang('en')">EN</button></span>`;
   nav.innerHTML = `<a href="#/" class="${location.hash==='#/'||location.hash===''?'active':''}">${t("dashboard")}</a><a href="#/docs" class="${location.hash==='#/docs'?'active':''}">${t("docs")}</a><a href="${WB_PANEL_URL}" target="_blank" rel="noopener" title="WorkBuddy Panel（公网）">${t("wbPanel")}</a>${langBtn}`;
