@@ -276,7 +276,7 @@ QUOTA_FILE = os.path.normpath(_quota_env) if _quota_env else _default_quota_file
 QUOTA_INTERVAL = float(os.getenv("SIDECAR_QUOTA_INTERVAL", "60"))
 QUOTA_STALE_S = float(os.getenv("SIDECAR_QUOTA_STALE_S", "900"))
 QUOTA_FULL_PCT = float(os.getenv("SIDECAR_QUOTA_PCT", "100"))
-# 后端名 -> quota.json 里的路径（分组键见 quota_collect.py）
+# 后端名 -> quota.json 里的路径（分组键见 quota_probe.py）
 QUOTA_MAP: dict[str, tuple[str, ...]] = {
     "opencodefsq": ("opencode", "fsq"),
     "opencode827": ("opencode", "827"),
