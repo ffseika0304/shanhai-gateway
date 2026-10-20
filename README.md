@@ -5,6 +5,8 @@ SWRR 加权轮转 · 配额指数冷却 · 任务级亲和 · 影子留存观测
 
 <p align="center"><i>两京锁钥无双地，万里长城第一关。</i></p>
 
+<p align="center">官网 <a href="https://seika.ltd/">seika.ltd</a> · 源码、文档与问题追踪在 GitHub</p>
+
 <p align="center">
   <a href="https://github.com/ffseika0304/shanhai-gateway"><img src="https://img.shields.io/github/stars/ffseika0304/shanhai-gateway?style=flat-square&logo=github" alt="GitHub Stars"></a>
   <a href="https://github.com/ffseika0304/shanhai-gateway/fork"><img src="https://img.shields.io/github/forks/ffseika0304/shanhai-gateway?style=flat-square&logo=github" alt="GitHub Forks"></a>
