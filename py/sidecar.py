@@ -276,14 +276,55 @@ QUOTA_FILE = os.path.normpath(_quota_env) if _quota_env else _default_quota_file
 QUOTA_INTERVAL = float(os.getenv("SIDECAR_QUOTA_INTERVAL", "60"))
 QUOTA_STALE_S = float(os.getenv("SIDECAR_QUOTA_STALE_S", "900"))
 QUOTA_FULL_PCT = float(os.getenv("SIDECAR_QUOTA_PCT", "100"))
-# 后端名 -> quota.json 里的路径（分组键见 quota_probe.py）
+# 后端名 -> quota.json 里的路径（分组键见 quota_collect.py）
 QUOTA_MAP: dict[str, tuple[str, ...]] = {
     "opencodefsq": ("opencode", "fsq"),
     "opencode827": ("opencode", "827"),
-    "volc_pro": ("volc", "coding"),   # Coding Plan，网关打 /api/coding/v3
-    "volc_plan": ("volc", "agent"),   # Agent Plan，网关打 /api/plan/v3
+    "volc_pro": ("volc", "coding"),   # 旧格式别名（采集器已改按后端名分组，保留作回落）
+    "volc_plan": ("volc", "agent"),   # 同上
 }
 QUOTA_LANES = ("rolling", "weekly", "monthly")   # 5 小时 / 7 天 / 30 天
+# 多订阅（2026-10-20）：volc 侧配额组键 = **后端名**（采集器按后端分组），
+# 所以新订阅加进 backends.json 就自动被配额规则管到——不用改这张表。
+# opencode 侧组键是账号短名（多个后端可共用一个账号），仍走静态表。
+VOLC_PLAN_PATHS = ("/api/coding/v3", "/api/plan/v3")
+
+
+def _quota_map_effective() -> dict[str, tuple[str, ...]]:
+    """后端名 -> 生效的组路径。
+
+    volc 套餐后端：("volc", 后端名)（per-订阅，新格式）；其余后端取静态表。
+    """
+    out: dict[str, tuple[str, ...]] = {}
+    try:
+        _, backends = _load_backends_list(_config_path())
+    except Exception:  # noqa: BLE001
+        backends = []
+    for b in backends:
+        name = b.get("name")
+        if not name:
+            continue
+        if any(p in (b.get("base_url") or "") for p in VOLC_PLAN_PATHS):
+            out[name] = ("volc", name)
+    for name, path in QUOTA_MAP.items():
+        out.setdefault(name, path)
+    return out
+
+
+def _quota_candidates(name: str) -> list[tuple[str, ...]]:
+    """后端名 -> 它在 quota.json 里可能的组路径（按优先级）。
+
+    volc 套餐后端：先试 ("volc", 后端名)（新格式，per-订阅），再试静态别名（旧格式）。
+    其余后端：只有静态表那一条。
+    """
+    cands: list[tuple[str, ...]] = []
+    eff = _quota_map_effective().get(name)
+    if eff:
+        cands.append(eff)
+    legacy = QUOTA_MAP.get(name)
+    if legacy and legacy != eff:
+        cands.append(legacy)
+    return cands
 
 _quota_hold: dict[str, str] = {}     # 后端 -> 打满原因
 _quota_last_poll = 0.0
@@ -404,10 +445,16 @@ def quota_tick(now: float) -> None:
     _quota_log("data ok")
 
     cfg = _configured_map()
-    for backend, path in QUOTA_MAP.items():
-        item: object = doc
-        for k in path:
-            item = item.get(k) if isinstance(item, dict) else None
+    names = set(cfg) | set(QUOTA_MAP)
+    for backend in sorted(names):
+        item: object = None
+        for path in _quota_candidates(backend):
+            cur: object = doc
+            for k in path:
+                cur = cur.get(k) if isinstance(cur, dict) else None
+            if isinstance(cur, dict) and cur.get("status") == "ok":
+                item = cur
+                break
         # 出错 / 缺凭证 / stale / 窗口缺失 → 不动作（沿用现状，绝不瞎猜）
         if not isinstance(item, dict) or item.get("status") != "ok":
             continue
@@ -551,7 +598,7 @@ def main() -> None:
     print(f"[sidecar] CN rules: entries={list(CN_ENTRIES)} floor={CN_FLOOR:g} "
           f"reset={CN_RESET_HOUR:02d}:00 interval={CN_INTERVAL:g}s "
           f"exhaust_fails={CN_EXHAUST_FAILS}", flush=True)
-    qmap = ", ".join("%s:%s" % (k, ".".join(v)) for k, v in QUOTA_MAP.items())
+    qmap = ", ".join("%s:%s" % (k, ".".join(v)) for k, v in sorted(_quota_map_effective().items()))
     print(f"[sidecar] quota rules: file={QUOTA_FILE} interval={QUOTA_INTERVAL:g}s "
           f"stale>{QUOTA_STALE_S:g}s full>={QUOTA_FULL_PCT:g}% map={{{qmap}}}", flush=True)
     # 首帧顺序不能反：先 tick() 把 _observed 铺满（规则才下得了手），
