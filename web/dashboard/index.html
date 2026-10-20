@@ -388,6 +388,9 @@ const esc = (s) => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&
 /* ═══════════ i18n ═══════════ */
 let lang = localStorage.getItem("lang") || "zh";
 let lastStats=null, lastMetrics=null, lastTokens=null, lastQuota=null;
+const t = (k) => (T[lang] && T[lang][k]) || T.zh[k] || k;
+const tf = (k, vars) => Object.entries(vars||{}).reduce((s,[key,v])=>s.replaceAll("{"+key+"}", v), t(k));
+
 const T = {
 zh:{
   title:"山海关 · 运维看板 — ShanHaiGateway",
@@ -420,10 +423,10 @@ zh:{
   desc_quota:"配额指挥舱数据（quota_probe 写的磁盘快照，带 Last-Modified）",
   desc_dashkey:"取静态 API Key（本页用）",
   key_h:"静态 API Key", copy:"复制", copied:"已复制 ✓", key_loading:"读取中…", key_change_hint:"改静态 API Key（即改即生效，旧 key 立即作废；提交空串 = 关闭该通道，需再点一次确认）：", key_change_btn:"改 key",
-  key_note_ok:t("key_note_ok"),
-  key_note_err:t("key_note_err"),
-  key_note_lan:t("key_note_lan"),
-  key_mock:t("key_mock"),
+  key_note_ok:"静态 key 只供本看板拉数据用；网关重启后若失效，回来重新取一次。",
+  key_note_err:"未读取到（需网关在公网口提供 /api/dashkey）",
+  key_note_lan:"LAN 免账口部署时本卡不适用。",
+  key_mock:"MOCK 演示数据 · 真实数据来自网关公网口 /api/dashkey",
   contract_h:"captures 消费契约（速记）",
   contract_body:"可用性看 <code>usable</code>，内容有无看 <code>partial_ratio</code>，截断看 <code>truncated</code>，同 <code>rid</code> 多条按 <code>ts</code> 排序取最后一条 <code>usable=true</code>。<code>status</code> 只在有实义 HTTP 码时参考（partial 中途断是 200，别拿它当完成判据）。",
   foot_line:"山海关 · ShanHaiGateway · 把失败截住，把账单砍下来",
@@ -514,8 +517,6 @@ en:{
   mock_heal:"demo · {n} restored", mock_break:"demo · {n} broken for 8s (wire SHG.hooks.onLaneClick to the admin API for real)",
   uptime_d:"d", uptime_h:"h", uptime_m:"m"
 }};
-const t = (k) => (T[lang] && T[lang][k]) || T.zh[k] || k;
-const tf = (k, vars) => Object.entries(vars||{}).reduce((s,[key,v])=>s.replaceAll("{"+key+"}", v), t(k));
 
 function applyI18n(){
   document.title = t("title");
