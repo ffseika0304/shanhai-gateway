@@ -10,12 +10,14 @@ import (
 // 环境变量名集中在这里而不是散在各文件：调用方排查「为什么我的配置没生效」
 // 时只需要看这一组常量，就能列出全部覆盖开关。
 const (
-	envDataDir      = "GATEWAY_DATA_DIR"
-	envConfigDir    = "GATEWAY_CONFIG_DIR"
-	envDBFile       = "GATEWAY_DB_FILE"
-	envBackendsFile = "GATEWAY_BACKENDS_FILE"
-	envKeysFile     = "GATEWAY_KEYS_FILE"
-	envQuotaFile    = "GATEWAY_QUOTA_FILE"
+	envDataDir       = "GATEWAY_DATA_DIR"
+	envConfigDir     = "GATEWAY_CONFIG_DIR"
+	envDBFile        = "GATEWAY_DB_FILE"
+	envBackendsFile  = "GATEWAY_BACKENDS_FILE"
+	envKeysFile      = "GATEWAY_KEYS_FILE"
+	envQuotaFile     = "GATEWAY_QUOTA_FILE"
+	envDashTokenFile = "GATEWAY_DASH_TOKEN_FILE"
+	envDashSessKey   = "GATEWAY_DASH_SESSION_KEY_FILE"
 )
 
 // Paths 是运行时所有路径的唯一出口。
@@ -51,6 +53,14 @@ type Paths struct {
 	// 含敏感信息，权限由调用方负责收紧。
 	KeysFile string
 
+	// DashSessionKeyFile 是看板会话签名密钥：<DataDir>/dash-session.key（0600）。
+	// 落盘的意义：自签 cookie 的签名密钥不变 ⇒ 网关重启后老 cookie 仍有效。
+	DashSessionKeyFile string
+
+	// DashTokenFile 是看板静态 key 的持久化文件：<DataDir>/dash-token（0600），
+	// 面板上 POST /api/dashkey 原子写它，dashToken 每次门检现读 ⇒ 改 key 即改即生效。
+	DashTokenFile string
+
 	// QuotaFile 是配额配置：<DataDir>/quota.json，可用 GATEWAY_QUOTA_FILE 覆盖。
 	// 放 DataDir 而不是 ConfigDir：它属于运行状态，会被程序改写。
 	QuotaFile string
@@ -80,14 +90,16 @@ func Resolve() (*Paths, error) {
 	configDir = filepath.Clean(configDir)
 
 	return &Paths{
-		DataDir:      dataDir,
-		LogDir:       filepath.Join(dataDir, "logs"),
-		ConfigDir:    configDir,
-		DBFile:       cleanOrEnv(envDBFile, filepath.Join(dataDir, AppName+".db")),
-		BackendsFile: cleanOrEnv(envBackendsFile, filepath.Join(configDir, "backends.json")),
-		BlockedFile:  filepath.Join(configDir, "backends.blocked.json"),
-		KeysFile:     cleanOrEnv(envKeysFile, filepath.Join(configDir, "keys.json")),
-		QuotaFile:    cleanOrEnv(envQuotaFile, filepath.Join(dataDir, "quota.json")),
+		DataDir:            dataDir,
+		LogDir:             filepath.Join(dataDir, "logs"),
+		ConfigDir:          configDir,
+		DBFile:             cleanOrEnv(envDBFile, filepath.Join(dataDir, AppName+".db")),
+		BackendsFile:       cleanOrEnv(envBackendsFile, filepath.Join(configDir, "backends.json")),
+		BlockedFile:        filepath.Join(configDir, "backends.blocked.json"),
+		KeysFile:           cleanOrEnv(envKeysFile, filepath.Join(configDir, "keys.json")),
+		QuotaFile:          cleanOrEnv(envQuotaFile, filepath.Join(dataDir, "quota.json")),
+		DashTokenFile:      cleanOrEnv(envDashTokenFile, filepath.Join(dataDir, "dash-token")),
+		DashSessionKeyFile: cleanOrEnv(envDashSessKey, filepath.Join(dataDir, "dash-session.key")),
 	}, nil
 }
 

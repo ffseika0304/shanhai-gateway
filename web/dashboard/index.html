@@ -355,6 +355,8 @@ td .seqb{font-family:var(--mono);font-size:10px;color:var(--faint);border:1px so
           <button class="btn acc" id="dashKeyCopy" style="display:none" data-i18n="copy">复制</button>
         </div>
         <p style="font-size:12px;color:var(--dim);margin-top:10px" id="dashKeyNote" data-i18n="key_loading">读取中…</p>
+        <p style="font-size:12px;color:var(--dim);margin-top:14px" data-i18n="key_change_hint">改静态 API Key（即改即生效，旧 key 立即作废；提交空串 = 关闭该通道，需再点一次确认）：</p>
+        <p><input id="newDashKey" type="text" autocomplete="off" spellcheck="false" style="width:320px;font-family:monospace" placeholder="sk_xxxxxxxxxxxx"> <button class="btn acc" onclick="changeDashKey()" data-i18n="key_change_btn">改 key</button> <span id="dashKeyMsg" class="sub"></span></p>
       </div>
     </div>
 
@@ -395,7 +397,7 @@ zh:{
   mock_badge:"MOCK 演示数据",
   no1:"01 / 总览", h_overview:"流量总览",
   no2:"02 / 引擎", h_sim:"路由引擎 · LIVE",
-  sim_hint:"车道状态实时同步 /api/stats · 金点 = 任务亲和 · 点车道 → 死接口 onLaneClick",
+  sim_hint:"车道状态实时同步 /api/stats · 金点 = 任务亲和 · 点车道看真实状态 · 拉爆/复活直接打 admin API",
   sim_head_r:"熔断 / 冷却 / 停用 = 真实后端状态 · 红圈倒计时 = cooldown_remain_s",
   legend1:"普通请求", legend2:"任务亲和（X-Job-Id，钉回同一条道）", legend3:"429 / 冷却 → 换道重试", legend4:"命中后端",
   s_routed:"已路由<b id=\"sRouted\">0</b>", s_reroute:"换道重试<b id=\"sReroute\">0</b>",
@@ -416,7 +418,7 @@ zh:{
   desc_recent:"最近请求：环形缓冲 ≤200 条，最新在前",
   desc_quota:"配额指挥舱数据（quota_probe 写的磁盘快照，带 Last-Modified）",
   desc_dashkey:"取静态 API Key（本页用）",
-  key_h:"静态 API Key", copy:"复制", copied:"已复制 ✓", key_loading:"读取中…",
+  key_h:"静态 API Key", copy:"复制", copied:"已复制 ✓", key_loading:"读取中…", key_change_hint:"改静态 API Key（即改即生效，旧 key 立即作废；提交空串 = 关闭该通道，需再点一次确认）：", key_change_btn:"改 key",
   key_note_ok:t("key_note_ok"),
   key_note_err:t("key_note_err"),
   key_note_lan:t("key_note_lan"),
@@ -437,11 +439,14 @@ zh:{
   q_err:"查询失败", q_nokey:"缺火山 AK/SK",
   q_stale:"未取到新值，沿用", q_none:"暂无配额数据（quota_probe 未运行或 quota.json 缺失）",
   th_b:"后端", th_comp:"Completion", th_total:"合计", th_cached:"缓存命中", th_cost:"费用(本月)", no_data:"暂无数据",
-  th_rid:"RID", th_model:"模型", th_in:"入", th_out:"入", th_status2:"状态", th_lat:"耗时", th_class:"分类", th_err2:"错误",
+  th_rid:"RID", th_model:"模型", th_in:"入", th_out:"出", th_status2:"状态", th_lat:"耗时", th_class:"分类", th_err2:"错误",
   retrying:"重试中",
   sim_client:"调用方", sim_src:"→ 车道状态来自 /api/stats", sim_more:"… 其余 {n} 条车道略",
-  hook_click:"死接口 onLaneClick(\"{n}\") 已触发 —— 在 SHG.hooks 里接 admin API",
-  hook_break:"死接口 breakLane(\"{n}\") —— 预留", hook_heal:"死接口 healLane(\"{n}\") —— 预留",
+  hook_click:"{n} · {state}",
+  hook_break:"{n} 已拉爆（熔断打开）", hook_heal:"{n} 已复活（清冷却）",
+  hook_fail:"{n} 操作失败：{msg}",
+  lane_cd_circuit:"熔断中", lane_cd_left:"冷却 {s}s", lane_ok:"正常",
+  lane_fail:"失败 {n} 次", lane_q:"额度 5h {r}% / 周 {wk}% / 月 {mo}%",
   mock_heal:"演示 · {n} 已复活", mock_break:"演示 · {n} 拉爆 8s（真实部署请在 SHG.hooks.onLaneClick 里接 admin API）",
   uptime_d:"天", uptime_h:"小时", uptime_m:"分"
 },
@@ -453,7 +458,7 @@ en:{
   mock_badge:"MOCK demo data",
   no1:"01 / OVERVIEW", h_overview:"Traffic overview",
   no2:"02 / ENGINE", h_sim:"Routing engine · LIVE",
-  sim_hint:"Lane states sync live from /api/stats · gold = task affinity · click a lane → dead hook onLaneClick",
+  sim_hint:"Lane states sync live from /api/stats · gold = task affinity · click a lane for live state · trip/heal hit the admin API",
   sim_head_r:"circuit / cooldown / disabled = real backend state · red ring countdown = cooldown_remain_s",
   legend1:"normal request", legend2:"task affinity (X-Job-Id, pinned to one lane)", legend3:"429 / cooldown → lane-switch retry", legend4:"backend hit",
   s_routed:"routed<b id=\"sRouted\">0</b>", s_reroute:"lane-switch retries<b id=\"sReroute\">0</b>",
@@ -474,7 +479,7 @@ en:{
   desc_recent:"Recent requests: ring buffer ≤200, newest first",
   desc_quota:"Quota-center data (disk snapshot written by quota_probe, served with Last-Modified)",
   desc_dashkey:"Fetch the static API key (used by this page)",
-  key_h:"Static API Key", copy:"Copy", copied:"Copied ✓", key_loading:"loading…",
+  key_h:"Static API Key", copy:"Copy", copied:"Copied ✓", key_loading:"loading…", key_change_hint:"Change the static API key (effective immediately, old key revoked; submit empty to disable the channel — click twice to confirm):", key_change_btn:"Change key",
   key_note_ok:"This static key is only for this dashboard to pull data; if it dies after a gateway restart, come back and fetch a fresh one.",
   key_note_err:"Not available (requires /api/dashkey on the gateway's public port)",
   key_note_lan:"Not applicable on the LAN free-lane deployment.",
@@ -495,10 +500,14 @@ en:{
   q_err:"Query failed", q_nokey:"Missing Volc AK/SK",
   q_stale:"stale — keeping previous snapshot", q_none:"no quota data (quota_probe not running or quota.json missing)",
   th_b:"Backend", th_comp:"Completion", th_total:"Total", th_cached:"Cache hits", th_cost:"Cost (month)", no_data:"no data yet",
-  th_rid:"RID", th_model:"Model", th_in:"In", th_out:"In", th_status2:"Status", th_lat:"Latency", th_class:"Class", th_err2:"Error",
+  th_rid:"RID", th_model:"Model", th_in:"In", th_out:"Out", th_status2:"Status", th_lat:"Latency", th_class:"Class", th_err2:"Error",
   retrying:"retrying",
   sim_client:"caller", sim_src:"→ lane states from /api/stats", sim_more:"… {n} more lanes omitted",
-  hook_click:"dead hook onLaneClick(\"{n}\") fired — wire it to the admin API inside SHG.hooks",
+  hook_click:"{n} · {state}",
+  hook_break:"{n} tripped (circuit open)", hook_heal:"{n} restored (cooldown cleared)",
+  hook_fail:"{n} failed: {msg}",
+  lane_cd_circuit:"circuit open", lane_cd_left:"cooldown {s}s", lane_ok:"ok",
+  lane_fail:"{n} failures", lane_q:"quota 5h {r}% / wk {wk}% / mo {mo}%",
   hook_break:"dead hook breakLane(\"{n}\") — reserved", hook_heal:"dead hook healLane(\"{n}\") — reserved",
   mock_heal:"demo · {n} restored", mock_break:"demo · {n} broken for 8s (wire SHG.hooks.onLaneClick to the admin API for real)",
   uptime_d:"d", uptime_h:"h", uptime_m:"m"
@@ -600,6 +609,33 @@ function setConn(ok){
   $("liveDot").classList.toggle("down", !ok);
   $("liveTxt").textContent = ok ? "LIVE" : t("conn_lost");
 }
+async function changeDashKey(){
+  const inp=document.getElementById('newDashKey');
+  const msg=document.getElementById('dashKeyMsg');
+  if(!inp||!msg)return;
+  const zh=lang==='zh';
+  const v=inp.value.trim();
+  if(!v&&!changeDashKey._armed){
+    changeDashKey._armed=true;
+    msg.textContent=zh?'空串将关闭静态 key 通道——再点一次确认':'Empty value disables the static-key channel — click again to confirm';
+    setTimeout(()=>{changeDashKey._armed=false;},4000);
+    return;
+  }
+  changeDashKey._armed=false;
+  msg.textContent=zh?'提交中…':'submitting…';
+  try{
+    const res=await fetch(`${API}/api/dashkey`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:v})});
+    const d=await res.json().catch(()=>({}));
+    if(res.ok&&d.ok){
+      inp.value='';
+      msg.textContent=d.enabled?(zh?'已生效':'applied'):(zh?'已生效：通道已关闭':'applied: channel disabled');
+      loadDashKey();
+    }else{
+      msg.textContent=(zh?'失败：':'failed: ')+(d.error||('http '+res.status));
+    }
+  }catch(e){ msg.textContent=(zh?'网络错误：':'network error: ')+e; }
+}
+
 async function getJSON(path){
   let res;
   try{
@@ -817,13 +853,42 @@ function toast(s){
 
 /* ── 死接口：把下面三个换成 admin API 调用即可上线 ── */
 window.SHG = window.SHG || {};
+/* admin API（运行态调参）：公网口同口也挂、过 dashGate ⇒ 登录态浏览器直接调。
+   /trip = 手动拉爆（强制熔断打开，core/upstream 的 b.Trip，与真实失败同源）；
+   /clear = 清冷却复活。 */
+async function adminPost(name, act){
+  const r = await fetch(`${API}/admin/backend/${encodeURIComponent(name)}/${act}`, {method:"POST"});
+  if(!r.ok) throw new Error(`HTTP ${r.status}`);
+  return await r.json().catch(()=>({}));
+}
+/* 该道的真实状态：/api/stats 的后端条目 + /quota.json 里按后端名的额度窗 */
+function laneState(name){
+  const st = ((lastStats && lastStats.backends) || []).find(b=>b.name===name) || {};
+  const q = (lastQuota && ((lastQuota.volc||{})[name] || (lastQuota.opencode||{})[name])) || null;
+  const parts = [];
+  if(st.circuit_open) parts.push(tf("lane_cd_circuit",{}));
+  else if(st.cooldown_remain_s>0) parts.push(tf("lane_cd_left",{s:Math.ceil(st.cooldown_remain_s)}));
+  else parts.push(tf("lane_ok",{}));
+  if(st.failed) parts.push(tf("lane_fail",{n:st.failed}));
+  if(q && q.windows){
+    const w = q.windows;
+    parts.push(tf("lane_q",{r:(w.rolling&&w.rolling.percent)||0, wk:(w.weekly&&w.weekly.percent)||0, mo:(w.monthly&&w.monthly.percent)||0}));
+  }
+  return parts.join(" · ");
+}
 SHG.hooks = {
-  /* 点车道。建议：POST /admin/backend/{name}/probe 之类 */
-  onLaneClick(name){ toast(tf("hook_click",{n:name})); },
-  /* 手动拉爆一个后端（视觉 + 真实由你决定） */
-  breakLane(name){ toast(tf("hook_break",{n:name})); },
-  /* 手动复活 / 清冷却 */
-  healLane(name){ toast(tf("hook_heal",{n:name})); },
+  /* 点车道：看这条道的真实状态（冷却/熔断/失败计数/额度窗） */
+  onLaneClick(name){ toast(tf("hook_click",{n:name, state:laneState(name)})); },
+  /* 手动拉爆：强制熔断打开 */
+  async breakLane(name){
+    try{ await adminPost(name,"trip"); toast(tf("hook_break",{n:name})); }
+    catch(e){ toast(tf("hook_fail",{n:name, msg:String(e.message||e)})); }
+  },
+  /* 手动复活：清冷却 */
+  async healLane(name){
+    try{ await adminPost(name,"clear"); toast(tf("hook_heal",{n:name})); }
+    catch(e){ toast(tf("hook_fail",{n:name, msg:String(e.message||e)})); }
+  },
 };
 
 const Sim = (function(){

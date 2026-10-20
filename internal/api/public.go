@@ -37,7 +37,7 @@ import (
 
 // publicGate 组装公网口的包装链。
 func publicGate(h *Handlers, mux http.Handler) http.Handler {
-	gated := dashGate(mux)
+	gated := dashGate(h, mux)
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// 下游 key 通道（只对 /v1/* 生效）
 		if strings.HasPrefix(r.URL.Path, "/v1/") && h.Keys != nil {

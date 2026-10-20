@@ -25,6 +25,7 @@ import (
 	"log"
 	"net/http"
 	"strings"
+	"time"
 )
 
 // handleAdminBackend GET/POST /admin/backend/{name}，POST /admin/backend/{name}/clear。
@@ -47,6 +48,22 @@ func (h *Handlers) handleAdminBackend(w http.ResponseWriter, r *http.Request) {
 		b.ClearCooldown()
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]any{"status": "ok", "name": name})
+		return
+	}
+
+	// {name}/trip：手动拉爆一个后端（强制熔断打开）——看板「手动拉爆」的落点。
+	// 走 core/upstream 已有的 b.Trip(now)：与真实失败触发的熔断同源，恢复仍靠
+	// ClearCooldown / 失败计数归零，不发明第二套健康状态。
+	if strings.HasSuffix(name, "/trip") {
+		name = strings.TrimSuffix(name, "/trip")
+		b := rt.ByName(name)
+		if b == nil {
+			http.Error(w, `{"error":"unknown backend"}`, http.StatusNotFound)
+			return
+		}
+		b.Trip(time.Now())
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]any{"status": "ok", "name": name, "tripped": true})
 		return
 	}
 

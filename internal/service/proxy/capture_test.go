@@ -5,6 +5,25 @@ import (
 	"testing"
 )
 
+// 动态密钥槽（2026-10-19 面板改 key 配套）：字面量替换、可清除、不影响静态表。
+func TestSetDynamicSecret(t *testing.T) {
+	defer SetDynamicSecret("") // 出测试清场
+
+	SetDynamicSecret("my.new+secret") // 带正则元字符，必须按字面量吃
+	// 输入避开「Authorization: Bearer …」——它被更早的静态规则整段脱敏，测不到动槽
+	if got := scrubCapture(`{"note":"key is my.new+secret here"}`); !strings.Contains(got, "[token]") || strings.Contains(got, "my.new") {
+		t.Fatalf("动态密钥应按字面量脱敏，got %q", got)
+	}
+	SetDynamicSecret("")
+	if got := scrubCapture("my.new+secret"); strings.Contains(got, "[token]") {
+		t.Fatalf("清除后不应再脱敏，got %q", got)
+	}
+	// 静态表照常：内置默认 key 的兜底不被动槽影响
+	if got := scrubCapture("slr_2e61800473a99f997cef6d6027d328ce"); !strings.Contains(got, "[token]") {
+		t.Fatalf("静态默认 key 兜底应保持，got %q", got)
+	}
+}
+
 func TestCaptureTeeTruncation(t *testing.T) {
 	tee := &captureTee{max: 10}
 	tee.Write([]byte("12345"))

@@ -75,6 +75,14 @@ type Handlers struct {
 	// 采集脚本写入）；/quota.json 直接回这个磁盘文件，缺则 404。
 	QuotaFile string
 
+	// DashTokenFile 看板静态 key 持久化文件（runtime.Paths.DashTokenFile）。
+	// POST /api/dashkey 原子写这里，dashToken 每次门检现读 → 改 key 即改即生效。
+	DashTokenFile string
+
+	// DashSessionKeyFile 看板会话签名密钥（runtime.Paths.DashSessionKeyFile，0600）。
+	// 自签 cookie 的 HMAC 密钥落盘 ⇒ 网关重启后老 cookie 仍有效。
+	DashSessionKeyFile string
+
 	// ConsoleFS 用户中心前端（web/console 的子树 fs，已在接线层 fs.Sub 好）。
 	ConsoleFS fs.FS
 	// DashboardFS 运维看板前端（web/dashboard 子树 fs）。磁盘目录

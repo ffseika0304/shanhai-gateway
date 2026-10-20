@@ -206,6 +206,7 @@ func main() {
 	// proxy.Handler 的签名吃 *routing.Router（闭包会钉死旧指针），
 	// 所以在这里包一层每次 Load —— 装配层的活，不动 proxy 的纪律。
 	proxyHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+
 		proxy.Handler(router.Load(), st, opt)(w, r)
 	})
 
@@ -224,6 +225,28 @@ func main() {
 		DashboardFS: mustSubFS("dashboard"),
 		StartedAt:   started,
 	}
+
+	// capture 脱敏动态密钥（2026-10-19 面板改 key 功能）：把当前生效的看板静态
+	// key 推给 proxy 的 scrub 动态槽，部署者换出来的新 key 不进留存库；运行期
+	// 再改由 POST /api/dashkey 内部同步，无需重启。
+	proxy.SetDynamicSecret(handlers.EffectiveDashToken())
+	go func() {
+		ticker := time.NewTicker(time.Minute)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+			}
+			rt := router.Load()
+			for _, name := range rt.Names() {
+				if bk := rt.ByName(name); bk != nil {
+					bk.Stats().ResetRecent60s()
+				}
+			}
+		}
+	}()
 
 	// ── 7) 两个 http.Server ─────────────────────────────────
 	lanAddr := runtime.EnvString("LISTEN", ":18006")

@@ -37,7 +37,7 @@ func New(h *Handlers) *API { return &API{h: h} }
 //	/api/user/*          用户中心（X-Session-Token 鉴权，不认 ?token=）
 //	/api/stats /api/tokens /api/metrics /api/recent   看板 API
 //	/quota.json          配额指挥舱磁盘数据
-//	/api/dashkey         静态 key 自取（dashauth.go 原文，两口共用）
+//	/api/dashkey         静态 key 自取 / 面板改 key（两口共用）
 //	/admin/backend/      运行态调参（内存态热改）
 //	/                    运维看板（LAN 免登录定调）
 //	/console/            用户中心前端（公版）
@@ -71,7 +71,7 @@ func (a *API) mux() *http.ServeMux {
 	mux.HandleFunc("/api/tokens", a.h.handleTokens)
 	mux.HandleFunc("/api/metrics", a.h.handleMetrics)
 	mux.HandleFunc("/api/recent", a.h.handleRecent)
-	mux.HandleFunc("/api/dashkey", dashKeyHandler)
+	mux.HandleFunc("/api/dashkey", a.h.dashKeyHandler)
 	mux.HandleFunc("/quota.json", a.h.handleQuota)
 
 	// admin 调参（公网口同口也挂 —— 过 dashGate）

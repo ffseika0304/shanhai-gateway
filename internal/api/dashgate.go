@@ -30,19 +30,28 @@
 package api
 
 import (
+	"crypto/hmac"
 	"crypto/rand"
+	"crypto/sha256"
 	"crypto/subtle"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
+	"fmt"
+	"io"
 	"log"
 	"net"
 	"net/http"
 	"os"
+	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
 
 	"shanhai-gateway/internal/runtime"
+	"shanhai-gateway/internal/service/proxy"
 )
 
 const (
@@ -100,11 +109,23 @@ func dashCheck(user, pass string) bool {
 
 const dashTokenDefault = "slr_2e61800473a99f997cef6d6027d328ce"
 
-// dashToken 取当前生效的 key。未设 DASH_TOKEN → 用内置默认；
-// 显式设成空串（systemd 里 `Environment=DASH_TOKEN=`）→ 整条通道关闭。
-func dashToken() string {
+// dashToken 取当前生效的 key。优先级（2026-10-19 面板改 key 功能）：
+//  1. DASH_TOKEN 环境变量显式设置——含空串（systemd `Environment=DASH_TOKEN=`）
+//     = 整条通道关闭。env 是部署者的最终决定，此时持久化文件被无视；
+//  2. 持久化文件 DashTokenFile——部署者没配 env 时，看板上 POST /api/dashkey
+//     改的 key 原子落盘这里，即改即生效（免重启）；
+//  3. 内置默认——统一密钥只当「进门槛」用：默认值随源码公开，任何部署都该在
+//     到手后第一时间于面板上换掉它。
+//
+// 文件每次门检现读（微小文件，量级同 quota.json 静态文件），换零缓存失效逻辑。
+func (h *Handlers) dashToken() string {
 	if v, ok := os.LookupEnv("DASH_TOKEN"); ok {
 		return strings.TrimSpace(v)
+	}
+	if h.DashTokenFile != "" {
+		if b, err := os.ReadFile(h.DashTokenFile); err == nil {
+			return strings.TrimSpace(string(b))
+		}
 	}
 	return dashTokenDefault
 }
@@ -120,8 +141,8 @@ func dashBearer(r *http.Request) string {
 }
 
 // dashTokenOK 恒定时间比对静态 key（key 配成空串时恒 false = 通道关闭）
-func dashTokenOK(r *http.Request) bool {
-	want := dashToken()
+func (h *Handlers) dashTokenOK(r *http.Request) bool {
+	want := h.dashToken()
 	if want == "" {
 		return false
 	}
@@ -132,72 +153,282 @@ func dashTokenOK(r *http.Request) bool {
 	return subtle.ConstantTimeCompare([]byte(got), []byte(want)) == 1
 }
 
-// dashKeyHandler 把当前生效的 key 吐给看板文档页，供就地复制 / 拼 curl 示例。
-// 公网口被 dashGate 拦着，**必须先登录**才读得到；
-// LAN 口 :18006 按文档 §九 本就免鉴权，能读到 key 的人早就是能随便调 LLM 的人，
-// 不新增攻击面。故挂在两个口共用的 mux 上（见 router.go 注册处）。
-func dashKeyHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet && r.Method != http.MethodHead {
+// dashKeyHandler 看板文档页的静态 key 端点，两口共用 mux（见 router.go 注册处）：
+//   - GET/HEAD：把当前生效的 key 吐给文档页，供就地复制 / 拼 curl 示例。
+//   - POST：改 key（2026-10-19 用户指令「统一密钥到手，让别人自己改，只要后端
+//     认就行」）。body {"token":"<新key>"}，trim 后原子落盘 DashTokenFile
+//     （0600）并即时生效——dashToken 每次门检现读，不用重启；提交空串 =
+//     持久化关闭通道。DASH_TOKEN env 显式设置时 409 拒改（改了也不生效，
+//     直说免得白高兴）。旧 key 立即作废。
+//
+// 公网口被 dashGate 拦着，**必须先登录**才碰得到；LAN 口 :18006 按文档 §九
+// 本就免鉴权，能随便调 LLM 的人本就能改 key，不新增攻击面。
+func (h *Handlers) dashKeyHandler(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodGet, http.MethodHead:
+		tok := h.dashToken()
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Cache-Control", "no-store")
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"token":   tok,
+			"enabled": tok != "",
+			"env":     "DASH_TOKEN",
+		})
+	case http.MethodPost:
+		h.dashKeyChange(w, r)
+	default:
 		http.Error(w, `{"error":"method not allowed"}`, http.StatusMethodNotAllowed)
+	}
+}
+
+// dashKeyChange POST 改 key 的实际逻辑（语义见 dashKeyHandler 注释）。
+// 成功后同步 proxy.SetDynamicSecret：新 key 即刻进 capture 脱敏，不进留存库。
+func (h *Handlers) dashKeyChange(w http.ResponseWriter, r *http.Request) {
+	if _, ok := os.LookupEnv("DASH_TOKEN"); ok {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusConflict)
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"ok":    false,
+			"error": "DASH_TOKEN 环境变量显式设置中：改文件不会生效，请先去掉该环境变量再改",
+		})
 		return
 	}
-	tok := dashToken()
+	var body struct {
+		Token string `json:"token"`
+	}
+	if err := json.NewDecoder(io.LimitReader(r.Body, 4096)).Decode(&body); err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		_ = json.NewEncoder(w).Encode(map[string]any{"ok": false, "error": `body 须为 {"token":"<新key>"} 的 JSON`})
+		return
+	}
+	tok := strings.TrimSpace(body.Token)
+	if len(tok) > 256 {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		_ = json.NewEncoder(w).Encode(map[string]any{"ok": false, "error": "key 过长（上限 256 字符）"})
+		return
+	}
+	if err := h.writeDashTokenFile(tok); err != nil {
+		log.Printf("[dashgate] 改 key 落盘失败: %v", err)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+		_ = json.NewEncoder(w).Encode(map[string]any{"ok": false, "error": "落盘失败，见服务端日志"})
+		return
+	}
+	proxy.SetDynamicSecret(tok) // capture 脱敏跟新 key 走，新密钥不进留存库
+	if tok == "" {
+		log.Printf("[dashgate] 看板静态 key 已在面板上清空 = 通道关闭")
+	} else {
+		log.Printf("[dashgate] 看板静态 key 已在面板上修改并即时生效")
+	}
 	w.Header().Set("Content-Type", "application/json")
-	w.Header().Set("Cache-Control", "no-store")
-	_ = json.NewEncoder(w).Encode(map[string]any{
-		"token":   tok,
-		"enabled": tok != "",
-		"env":     "DASH_TOKEN",
-	})
+	_ = json.NewEncoder(w).Encode(map[string]any{"ok": true, "enabled": tok != ""})
 }
 
+// writeDashTokenFile 原子落盘（同目录 tmp + rename，0600）。空串写空文件 =
+// 持久化关闭通道。不落日志、不进响应——密钥只在文件与内存里。
+func (h *Handlers) writeDashTokenFile(tok string) error {
+	if h.DashTokenFile == "" {
+		return errors.New("DashTokenFile 未接线（旧二进制？）")
+	}
+	if err := os.MkdirAll(filepath.Dir(h.DashTokenFile), 0o700); err != nil {
+		return err
+	}
+	tmp := h.DashTokenFile + ".tmp"
+	fd, err := os.OpenFile(tmp, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0o600)
+	if err != nil {
+		return err
+	}
+	if _, err := fd.WriteString(tok); err != nil {
+		fd.Close()
+		return err
+	}
+	if err := fd.Close(); err != nil {
+		return err
+	}
+	return os.Rename(tmp, h.DashTokenFile)
+}
+
+// EffectiveDashToken 供装配层（main.go）在启动时把当前生效 key 塞进 capture
+// 脱敏的动态槽（proxy.SetDynamicSecret）；运行期再改由 dashKeyChange 同步。
+func (h *Handlers) EffectiveDashToken() string { return h.dashToken() }
+
 // ---------------------------------------------------------------------------
-// session 表
+// 会话：自签 cookie（2026-10-20）
+//
+// 原来会话表在内存 map 里：网关一重启，**所有已登录 cookie 当场作废**（当天换
+// 前端重启三次，用户浏览器直接被踢回登录页，页面一直报"API 连接中断"）。
+// 改成**自签 cookie**：值 = id.exp.mac，服务端只验签名与过期，**不存表**
+// ⇒ 网关重启无感。
+//
+// 注销要能作废（自签 cookie 天然做不到"服务端删一条"）⇒ 保留一张「已作废 id」
+// 小表落盘，只在校签时查；上限截断（只留最近 1000 条）。
+//
+// 滑动续期：验签通过且剩余不足 3 天时，重新签一个 7 天下发（无状态，不写盘）。
 // ---------------------------------------------------------------------------
 
-// dashNewSession 造随机 session id 并登记，返回 cookie 值
-func dashNewSession() string {
+const dashSessionIDBytes = 16 // id 随机字节（128bit，暴破无意义）
+const dashRevokedMax = 1000
+
+var (
+	dashKeyMu       sync.Mutex
+	dashKeyByPath   = map[string][]byte{} // 密钥文件路径 → 密钥（**按路径**缓存：换路径=换密钥）
+	dashKeyVolatile []byte                // 无路径时的进程内临时密钥（重启即失效）
+)
+
+// dashSessionKey 取会话签名密钥：<dataDir>/dash-session.key（0600），
+// 首次用时随机生成并原子落盘。放 DataDir 下——同 QuotaFile / DashTokenFile 的理由。
+//
+// **按路径缓存**（不是全局一份）：不同部署（不同密钥文件）不能互相认 cookie；
+// 同一路径的多个 Handlers 实例共享一把 ⇒ 换进程/重启后老 cookie 仍有效。
+func (h *Handlers) dashSessionKey() []byte {
+	path := h.DashSessionKeyFile
+	dashKeyMu.Lock()
+	defer dashKeyMu.Unlock()
+	if path == "" {
+		// 没有路径（理论上不会出现）：退化成进程内临时密钥 ⇒ 重启即失效（旧行为）
+		if len(dashKeyVolatile) == 0 {
+			b := make([]byte, 32)
+			_, _ = rand.Read(b)
+			dashKeyVolatile = b
+		}
+		return dashKeyVolatile
+	}
+	if k, ok := dashKeyByPath[path]; ok {
+		return k
+	}
+	if b, err := os.ReadFile(path); err == nil && len(b) >= 32 {
+		dashKeyByPath[path] = b[:32]
+		return dashKeyByPath[path]
+	}
 	b := make([]byte, 32)
 	if _, err := rand.Read(b); err != nil {
-		// crypto/rand 在 Linux 上不该失败；真失败就用时间戳兜底（保登录可用）
-		return hex.EncodeToString([]byte(time.Now().Format(time.RFC3339Nano)))
+		_, _ = rand.Read(b) // crypto/rand 极小概率失败：仍能跑（只是重启会失效）
 	}
-	id := hex.EncodeToString(b)
-	dashSessMu.Lock()
-	now := time.Now()
-	// 懒清扫：顺手扔掉已过期的（session 量级为个位数，全表扫无压力）
-	for k, exp := range dashSess {
-		if now.After(exp) {
-			delete(dashSess, k)
+	if err := os.MkdirAll(filepath.Dir(path), 0o700); err == nil {
+		tmp := path + ".tmp"
+		if err := os.WriteFile(tmp, b, 0o600); err == nil {
+			_ = os.Rename(tmp, path) // 原子替换：并发起进程也不会读到半个文件
 		}
 	}
-	dashSess[id] = now.Add(dashSessionTTL)
-	dashSessMu.Unlock()
-	return id
+	dashKeyByPath[path] = b
+	return b
 }
 
-// dashValidSession 校验请求携带的 cookie；有效则顺延续期
-func dashValidSession(r *http.Request) bool {
+// dashSessionMac 算签名：HMAC-SHA256(key, id|exp)
+func dashSessionMac(key []byte, id string, exp int64) string {
+	m := hmac.New(sha256.New, key)
+	fmt.Fprintf(m, "%s|%d", id, exp)
+	return base64.RawURLEncoding.EncodeToString(m.Sum(nil))
+}
+
+// dashSignSession 造 cookie 值：id.exp.mac
+func (h *Handlers) dashSignSession(id string, exp time.Time) string {
+	e := exp.Unix()
+	return id + "." + strconv.FormatInt(e, 10) + "." + dashSessionMac(h.dashSessionKey(), id, e)
+}
+
+// dashSessionParts 拆 cookie 值
+func dashSessionParts(v string) (id string, exp int64, mac string, ok bool) {
+	parts := strings.Split(v, ".")
+	if len(parts) != 3 {
+		return "", 0, "", false
+	}
+	e, err := strconv.ParseInt(parts[1], 10, 64)
+	if err != nil {
+		return "", 0, "", false
+	}
+	return parts[0], e, parts[2], true
+}
+
+// dashRevokedFile 已作废 id 小表（与密钥同目录）
+func (h *Handlers) dashRevokedFile() string {
+	if h.DashSessionKeyFile == "" {
+		return ""
+	}
+	return filepath.Join(filepath.Dir(h.DashSessionKeyFile), "dash-revoked")
+}
+
+// dashSessionRevoked 该 id 是否已作废（注销时写进来）
+func (h *Handlers) dashSessionRevoked(id string) bool {
+	p := h.dashRevokedFile()
+	if p == "" {
+		return false
+	}
+	b, err := os.ReadFile(p)
+	if err != nil {
+		return false
+	}
+	for _, line := range strings.Split(string(b), "\n") {
+		if strings.TrimSpace(line) == id {
+			return true
+		}
+	}
+	return false
+}
+
+// dashRevokeSession 作废一个 id（注销）：追加到小表，超上限截断
+func (h *Handlers) dashRevokeSession(id string) {
+	p := h.dashRevokedFile()
+	if p == "" {
+		return
+	}
+	lines := strings.Split(strings.TrimSpace(string(mustRead(p))), "\n")
+	lines = append(lines, id)
+	if len(lines) > dashRevokedMax {
+		lines = lines[len(lines)-dashRevokedMax:]
+	}
+	_ = os.WriteFile(p, []byte(strings.Join(lines, "\n")+"\n"), 0o600)
+}
+
+func mustRead(p string) []byte {
+	b, _ := os.ReadFile(p)
+	return b
+}
+
+// dashNewSession 造一个已签名的 cookie 值（id + 7 天）
+func (h *Handlers) dashNewSession() string {
+	b := make([]byte, dashSessionIDBytes)
+	if _, err := rand.Read(b); err != nil {
+		_, _ = rand.Read(b) // crypto/rand 在 Linux 上不该失败
+	}
+	id := hex.EncodeToString(b)
+	return h.dashSignSession(id, time.Now().Add(dashSessionTTL))
+}
+
+// dashValidSession 校验 cookie；有效则顺延续期（剩余不足 3 天时重签下发）
+func (h *Handlers) dashValidSession(w http.ResponseWriter, r *http.Request) bool {
 	c, err := r.Cookie(dashCookieName)
 	if err != nil || c.Value == "" {
 		return false
 	}
-	dashSessMu.Lock()
-	defer dashSessMu.Unlock()
-	now := time.Now()
-	exp, ok := dashSess[c.Value]
-	if !ok || now.After(exp) {
-		delete(dashSess, c.Value) // 未登录或已过期（删不存在的键无害）
+	id, exp, mac, ok := dashSessionParts(c.Value)
+	if !ok {
 		return false
 	}
-	dashSess[c.Value] = now.Add(dashSessionTTL) // 滑动续期
+	want := dashSessionMac(h.dashSessionKey(), id, exp)
+	if subtle.ConstantTimeCompare([]byte(mac), []byte(want)) != 1 {
+		return false
+	}
+	if time.Now().After(time.Unix(exp, 0)) {
+		return false
+	}
+	if h.dashSessionRevoked(id) {
+		return false
+	}
+	// 滑动续期：剩余不足 3 天就重签一个 7 天的（无状态，不写盘）
+	if time.Until(time.Unix(exp, 0)) < 3*24*time.Hour {
+		http.SetCookie(w, &http.Cookie{
+			Name:     dashCookieName,
+			Value:    h.dashSignSession(id, time.Now().Add(dashSessionTTL)),
+			Path:     "/",
+			HttpOnly: true,
+			SameSite: http.SameSiteLaxMode,
+			MaxAge:   int(dashSessionTTL / time.Second),
+		})
+	}
 	return true
-}
-
-func dashDropSession(id string) {
-	dashSessMu.Lock()
-	delete(dashSess, id)
-	dashSessMu.Unlock()
 }
 
 // ---------------------------------------------------------------------------
@@ -320,14 +551,15 @@ func wantsHTML(r *http.Request) bool {
 
 // dashGate 包住整个业务 mux：/login、/logout 自治，其余全要求有效 session。
 // 只挂在公网口（LISTEN_PUBLIC）上，LAN 口 :18006 不经过这里。
-func dashGate(h http.Handler) http.Handler {
+// h 是 Handlers（静态 key 校验要读它上面的生效 key），next 是业务 mux。
+func dashGate(h *Handlers, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		path := r.URL.Path
 
 		if path == "/login" {
 			switch r.Method {
 			case http.MethodGet, http.MethodHead:
-				if dashValidSession(r) {
+				if h.dashValidSession(w, r) {
 					http.Redirect(w, r, "/", http.StatusFound)
 					return
 				}
@@ -341,7 +573,7 @@ func dashGate(h http.Handler) http.Handler {
 				_ = r.ParseForm()
 				user, pass := r.PostFormValue("user"), r.PostFormValue("pass")
 				if dashCheck(user, pass) {
-					sid := dashNewSession()
+					sid := h.dashNewSession()
 					http.SetCookie(w, &http.Cookie{
 						Name:     dashCookieName,
 						Value:    sid,
@@ -370,7 +602,7 @@ func dashGate(h http.Handler) http.Handler {
 
 		if path == "/logout" {
 			if c, err := r.Cookie(dashCookieName); err == nil {
-				dashDropSession(c.Value)
+				h.dashRevokeSession(c.Value)
 			}
 			http.SetCookie(w, &http.Cookie{
 				Name: dashCookieName, Value: "", Path: "/",
@@ -385,9 +617,9 @@ func dashGate(h http.Handler) http.Handler {
 		// 通道都盖上——quota.json 是磁盘静态文件（带 Last-Modified，会被浏览器
 		// 启发式缓存），/api/* 走公网代理链，任何一环缓存住旧 JSON 都会伪装成
 		// "看板不自动刷新"。
-		if dashValidSession(r) || dashTokenOK(r) {
+		if h.dashValidSession(w, r) || h.dashTokenOK(r) {
 			w.Header().Set("Cache-Control", "no-store")
-			h.ServeHTTP(w, r)
+			next.ServeHTTP(w, r)
 			return
 		}
 		// 未登录：页面导航 → 302 去登录页；接口/fetch → 401 JSON

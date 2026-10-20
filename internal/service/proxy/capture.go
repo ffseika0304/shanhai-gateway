@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"regexp"
 	"strings"
+	"sync/atomic"
 	"time"
 	"unicode"
 
@@ -64,8 +65,9 @@ func compile(pat, repl string) scrubRule { return scrubRule{regexp.MustCompile(p
 var scrubRules = []scrubRule{
 	// 0) 具体静态密钥：已知事实 value 硬编码。它不是秘密（文档公开），但**不该进留存
 	//    库**——某次调试贴了 curl 就会出现在 req_body。
-	//    ⚠️ 维护负担（非错误）：若 SLR 的 DASH_TOKEN 变更，本条要同步 —— 见
-	//    seika_llm_router.md §九。刻意不做动态读取，那会把 SLR 密钥引入 gateway 启动路径。
+	//    部署者经面板换掉默认 key 后（POST /api/dashkey），**新** key 由下方
+	//    dynamicScrub 动态槽接管（api 层显式推送，capture 自身仍不读 env/文件，
+	//    不引入启动路径依赖）；本条继续兜住默认值。
 	compile(`slr_2e61800473a99f997cef6d6027d328ce`, `[token]`),
 	// 1) 内部绝对路径。/opt 吞整段（整个部署目录都非公开）。/home 只掩用户名、刻意
 	//    留项目名（scf-dev 等）——项目名在全部文档里公开，且保留它可聚合"哪类请求
@@ -105,9 +107,29 @@ var scrubRules = []scrubRule{
 	compile(`\b(?:sk-|ark-|sk-ws-|slr_|gp-)[A-Za-z0-9_\-]{6,}\b`, `[key]`),
 }
 
+// dynamicScrub 动态密钥槽（2026-10-19 面板改 key 功能配套）：api 层在启动与
+// 面板改 key 时把**当前生效**的看板静态 key 塞进来（SetDynamicSecret），scrub
+// 按字面量替换为 [token]。上面静态表只兜仓库可见的内置默认；部署者换出来的
+// 新 key 由本槽接管——新密钥既不进仓库文件，也不进启动路径（api 层显式推送，
+// capture 依旧自足）。零值（re==nil）= 无动态密钥。
+var dynamicScrub atomic.Value // 存 scrubRule
+
+// SetDynamicSecret 设置/清除动态脱敏密钥（api 层调用；空串 = 清除）。
+// QuoteMeta 保证字面量匹配——key 里的 . * + 等不当正则元字符。
+func SetDynamicSecret(secret string) {
+	if secret == "" {
+		dynamicScrub.Store(scrubRule{})
+		return
+	}
+	dynamicScrub.Store(compile(regexp.QuoteMeta(secret), "[token]"))
+}
+
 func scrubCapture(s string) string {
 	for _, r := range scrubRules {
 		s = r.re.ReplaceAllString(s, r.repl)
+	}
+	if dr, ok := dynamicScrub.Load().(scrubRule); ok && dr.re != nil {
+		s = dr.re.ReplaceAllString(s, dr.repl)
 	}
 	return s
 }
