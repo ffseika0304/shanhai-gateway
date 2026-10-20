@@ -1,3 +1,5 @@
+中文 | [English](README_EN.md)
+
 <h1 align="center">ShanHaiGateway · 山海关</h1>
 
 <p align="center">把多个上游模型供应商组织成一个 OpenAI 兼容端点<br>
