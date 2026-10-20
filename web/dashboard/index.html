@@ -1,524 +1,943 @@
 <!DOCTYPE html>
-<html lang="zh">
+<html lang="zh-CN">
 <head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>ShanHai Gateway</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>山海关 · 运维看板 — ShanHaiGateway</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23e0532f'/%3E%3Ctext x='32' y='47' font-family='Noto Serif SC,serif' font-size='40' font-weight='900' fill='%23fff' text-anchor='middle'%3E关%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@700;900&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
-:root{--bg:#0d1117;--card:#161b22;--text:#c9d1d9;--sub:#8b949e;--border:#30363d;--primary:#58a6ff;--success:#3fb950;--danger:#f85149;--warn:#d29922}
+:root{
+  --bg:#0b0d11; --bg-soft:#12151c; --card:#151923; --code-bg:#090b0f;
+  --border:#232a38; --border-hi:#3a4558;
+  --text:#d8dce4; --dim:#8b93a3; --faint:#5a6478;
+  --accent:#e0532f; --accent-soft:rgba(224,83,47,.12);
+  --gold:#d9a441; --green:#5ea86f; --red:#e0532f; --warn:#d9a441;
+  --serif:"Noto Serif SC","Songti SC",SimSun,serif;
+  --mono:"JetBrains Mono","Cascadia Code",Consolas,monospace;
+  --sans:"PingFang SC","Microsoft YaHei","Noto Sans SC",system-ui,sans-serif;
+}
 *{margin:0;padding:0;box-sizing:border-box}
-body{font-family:system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
-.nav{background:var(--card);border-bottom:1px solid var(--border);padding:12px 24px;display:flex;justify-content:space-between;align-items:center}
-.nav a{color:var(--primary);text-decoration:none;margin-left:16px;font-size:14px}
-.nav a.active{font-weight:700}
-.container{max-width:1200px;margin:0 auto;padding:24px}
-.card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:24px;margin-bottom:16px}
-h1{font-size:20px;margin-bottom:4px;color:var(--primary)}
-h2{font-size:16px;margin-bottom:12px;color:var(--sub)}
-.sub{color:var(--sub);font-size:14px}
-.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px}
-.stat{text-align:center;padding:20px;background:var(--bg);border:1px solid var(--border);border-radius:8px}
-.stat .num{font-size:28px;font-weight:700}
-.stat .label{font-size:13px;color:var(--sub);margin-top:4px}
-.ok{color:var(--success)}.err{color:var(--danger)}.blue{color:var(--primary)}.warn{color:var(--warn)}
-table{width:100%;border-collapse:collapse;font-size:14px}
-th,td{padding:8px 12px;text-align:left;border-bottom:1px solid var(--border)}
-th{color:var(--sub);font-weight:500;font-size:13px}
-.bar{background:var(--primary);height:14px;border-radius:3px;min-width:2px}
-.bar-ok{background:var(--success)}.bar-fail{background:var(--danger)}
-.tag{display:inline-block;padding:2px 8px;border-radius:10px;font-size:12px}
-.tag-ok{background:#238636;color:#fff}
-.tag-fail{background:#da3633;color:#fff}
-.tag-in{background:#30363d;color:#8b949e}
-#ts{float:right;color:var(--sub);font-size:.8em;margin-top:6px}
-.bar-row{display:flex;align-items:center;gap:10px;margin:4px 0}
-.bar-wrap{flex:1;background:var(--bg);border-radius:4px;height:16px;overflow:hidden}
-.lang-btn{background:transparent;border:1px solid var(--border);border-radius:4px;padding:2px 8px;font-size:12px;cursor:pointer;color:var(--sub)}
-.lang-btn.active{border-color:var(--primary);color:var(--primary)}
-@media(max-width:800px){body{padding:12px}}
+html{scroll-behavior:smooth}
+body{
+  background:var(--bg); color:var(--text); font-family:var(--sans);
+  font-size:14px; line-height:1.7; min-height:100vh;
+}
+body::before{
+  content:""; position:fixed; inset:0; z-index:-2;
+  background:
+    radial-gradient(900px 480px at 80% -10%, rgba(224,83,47,.08), transparent 60%),
+    linear-gradient(rgba(255,255,255,.022) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,.022) 1px, transparent 1px);
+  background-size:auto, auto, 44px 100%, 100% 44px;
+}
+body::after{
+  content:""; position:fixed; inset:0; z-index:-1; pointer-events:none; opacity:.045;
+  background-image:url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="140" height="140"><filter id="n"><feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2"/></filter><rect width="140" height="140" filter="url(%23n)"/></svg>');
+}
+::selection{background:var(--accent);color:#fff}
+a{color:var(--text);text-decoration:none}
+code{font-family:var(--mono);font-size:.9em;background:var(--code-bg);border:1px solid var(--border);border-radius:3px;padding:1px 6px}
+
+/* ---------- topbar ---------- */
+#connbar{
+  display:none; text-align:center; padding:6px; font-family:var(--mono); font-size:12px;
+  background:#3a120a; color:#ff9b85; border-bottom:1px solid #6b2415;
+}
+#connbar.show{display:block}
+nav{
+  position:sticky; top:0; z-index:50;
+  background:rgba(11,13,17,.85); backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--border);
+}
+nav .in{max-width:1240px;margin:0 auto;padding:0 24px;height:56px;display:flex;align-items:center;gap:18px}
+.brand{display:flex;align-items:center;gap:11px;user-select:none}
+.brand .seal{
+  width:30px;height:30px;border-radius:8px;flex:none;
+  background:linear-gradient(145deg,#ec6640,#d34a28);
+  display:flex;align-items:center;justify-content:center;
+  font-family:var(--serif);font-weight:900;font-size:17px;color:#fff;
+  box-shadow:0 4px 14px -4px rgba(224,83,47,.55), inset 0 1px 0 rgba(255,255,255,.25);
+}
+.brand b{font-family:var(--serif);font-weight:900;font-size:16.5px;letter-spacing:.02em}
+.brand small{font-family:var(--mono);font-size:10.5px;color:var(--faint);letter-spacing:.16em;display:block;line-height:1.2}
+nav .links{margin-left:auto;display:flex;align-items:center;gap:20px;font-size:13px;color:var(--dim)}
+nav .links a:hover{color:var(--text)}
+nav .links a.active{color:var(--accent);font-weight:600}
+.live{display:inline-flex;align-items:center;gap:7px;font-family:var(--mono);font-size:11.5px;color:var(--faint)}
+.live i{width:7px;height:7px;border-radius:50%;background:var(--green);animation:pulse 1.8s ease infinite}
+.live.down i{background:var(--red);animation:none}
+@keyframes pulse{50%{opacity:.25}}
+@media(max-width:820px){nav .links{display:none}}
+
+/* ---------- layout ---------- */
+.wrap{max-width:1240px;margin:0 auto;padding:26px 24px 70px}
+.view{display:none}.view.active{display:block}
+.sec-h{display:flex;align-items:baseline;gap:14px;margin:34px 0 14px}
+.sec-h:first-child{margin-top:4px}
+.sec-h .no{font-family:var(--mono);font-size:12px;color:var(--accent);letter-spacing:.18em}
+.sec-h h2{font-family:var(--serif);font-weight:900;font-size:20px;letter-spacing:.02em}
+.sec-h .hint{margin-left:auto;font-family:var(--mono);font-size:11.5px;color:var(--faint)}
+
+/* KPI / stat cards */
+.grid-k{display:grid;grid-template-columns:repeat(auto-fit,minmax(168px,1fr));gap:12px}
+.stat{
+  position:relative;overflow:hidden;
+  background:var(--card);border:1px solid var(--border);border-radius:10px;padding:18px 18px 15px;
+}
+.stat::after{content:"";position:absolute;right:-22px;bottom:-22px;width:70px;height:70px;border-radius:50%;background:var(--accent-soft);filter:blur(6px)}
+.stat .v{font-family:var(--mono);font-size:25px;font-weight:700;line-height:1.15}
+.stat .v small{font-size:13px;color:var(--dim);font-weight:400;margin-left:2px}
+.stat .v .pre{font-size:15px;color:var(--dim);font-weight:400;margin-right:1px}
+.stat .k{margin-top:5px;font-size:12px;color:var(--dim)}
+.stat.ok .v{color:var(--green)} .stat.warn .v{color:var(--gold)}
+.stat.err .v{color:var(--red)} .stat.acc .v{color:var(--accent)}
+
+/* cards & tables */
+.card{background:var(--card);border:1px solid var(--border);border-radius:10px;overflow:hidden}
+.card-h{display:flex;align-items:center;gap:10px;padding:12px 18px;border-bottom:1px solid var(--border);background:var(--bg-soft)}
+.card-h b{font-size:13.5px;font-weight:600}
+.card-h .hint{margin-left:auto;font-family:var(--mono);font-size:11px;color:var(--faint)}
+.tbl-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{padding:9px 14px;text-align:left;border-bottom:1px solid var(--border);white-space:nowrap}
+tr:last-child td{border-bottom:none}
+th{color:var(--faint);font-weight:500;font-size:11.5px;letter-spacing:.05em;background:rgba(255,255,255,.012)}
+td.mono{font-family:var(--mono);font-size:12.5px}
+td.dim{color:var(--dim)}
+.pos{color:var(--green);font-weight:600}.neg{color:var(--red);font-weight:600}
+tr.row-hot td{background:rgba(224,83,47,.055)}
+tr.row-off td{opacity:.45}
+.num{font-family:var(--mono)}
+
+/* bars */
+.bar-row{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;margin:3px 0}
+.bar-track{height:7px;background:#1c222e;border-radius:4px;overflow:hidden}
+.bar-fill{display:block;height:100%;border-radius:4px;background:var(--green);transition:width .5s cubic-bezier(.2,.7,.2,1),background .3s}
+.bar-fill.warn{background:var(--warn)} .bar-fill.hot{background:var(--red)} .bar-fill.acc{background:var(--accent)}
+.conc-cell{min-width:150px}
+.conc-cell .sub{font-family:var(--mono);font-size:11px;color:var(--dim)}
+
+/* pills */
+.pill{display:inline-flex;align-items:center;gap:5px;padding:2px 9px;border-radius:20px;font-size:11px;font-family:var(--mono);border:1px solid var(--border);color:var(--dim)}
+.pill i{width:6px;height:6px;border-radius:50%;background:var(--green)}
+.pill.ok{color:var(--green);border-color:rgba(94,168,111,.35)} .pill.ok i{background:var(--green)}
+.pill.hot{color:var(--red);border-color:rgba(224,83,47,.45);background:var(--accent-soft)} .pill.hot i{background:var(--red);animation:pulse 1s ease infinite}
+.pill.warn{color:var(--gold);border-color:rgba(217,164,65,.4)} .pill.warn i{background:var(--gold)}
+.pill.off{opacity:.55} .pill.off i{background:var(--faint)}
+
+/* affinity / quota */
+.duo{display:grid;grid-template-columns:1fr 1.4fr;gap:12px}
+@media(max-width:920px){.duo{grid-template-columns:1fr}}
+.pad{padding:16px 18px}
+.aff-big{display:flex;align-items:baseline;gap:8px;margin:2px 0 12px}
+.aff-big .pct{font-family:var(--mono);font-size:34px;font-weight:700;color:var(--gold)}
+.aff-big .lbl{font-size:12px;color:var(--dim)}
+.aff-nums{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:14px}
+.aff-nums div{background:var(--code-bg);border:1px solid var(--border);border-radius:8px;padding:8px 10px;text-align:center}
+.aff-nums .n{font-family:var(--mono);font-size:16px;font-weight:600}
+.aff-nums .t{font-size:10.5px;color:var(--faint);margin-top:1px}
+.qcards{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}
+.qcard{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 16px}
+.qcard b{font-size:13px;font-weight:600}
+.win-row{display:grid;grid-template-columns:44px 1fr 40px 92px;gap:9px;align-items:center;margin:8px 0 0;font-size:11.5px;color:var(--dim)}
+.win-row .pct{font-family:var(--mono);text-align:right;color:var(--text)}
+.win-row .reset{font-family:var(--mono);text-align:right;font-size:10.5px;color:var(--faint)}
+.qnote{margin-top:12px;font-size:10.5px;color:var(--faint)}
+
+/* hourly chart */
+.chart{display:flex;align-items:flex-end;gap:3px;height:110px;padding:6px 2px 0}
+.chart .bar{flex:1;min-width:5px;max-width:26px;background:linear-gradient(180deg,var(--accent),#8f3018);border-radius:2px 2px 0 0;min-height:2px;position:relative;transition:height .5s}
+.chart .bar:hover::after{
+  content:attr(data-v);position:absolute;bottom:calc(100% + 4px);left:50%;transform:translateX(-50%);
+  font-family:var(--mono);font-size:10px;color:var(--text);background:var(--code-bg);
+  border:1px solid var(--border);border-radius:4px;padding:1px 6px;white-space:nowrap;
+}
+.chart-x{display:flex;gap:3px;margin-top:4px}
+.chart-x span{flex:1;min-width:5px;max-width:26px;font-family:var(--mono);font-size:9px;color:var(--faint);text-align:center;overflow:hidden}
+
+/* recent table */
+.recent-scroll{max-height:420px;overflow-y:auto}
+.recent-scroll::-webkit-scrollbar{width:8px}
+.recent-scroll::-webkit-scrollbar-thumb{background:#2a3344;border-radius:4px}
+td .errtxt{max-width:260px;overflow:hidden;text-overflow:ellipsis}
+td .seqb{font-family:var(--mono);font-size:10px;color:var(--faint);border:1px solid var(--border);border-radius:3px;padding:0 4px;margin-left:4px}
+
+/* ---------- SWRR routing sim ---------- */
+.sim-panel{background:var(--code-bg);border:1px solid var(--border);border-radius:10px;overflow:hidden;box-shadow:0 30px 80px -40px rgba(0,0,0,.9)}
+.sim-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:11px 18px;background:var(--bg-soft);border-bottom:1px solid var(--border);font-family:var(--mono);font-size:11.5px;color:var(--faint)}
+.sim-head .live2{color:var(--accent);font-weight:700;letter-spacing:.1em;display:inline-flex;align-items:center;gap:8px}
+.sim-head .live2::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--accent);animation:pulse 1.6s ease infinite}
+.sim-head b{color:var(--gold);font-weight:600}
+#sim{display:block;width:100%;height:auto}
+.sim-legend{display:flex;gap:18px;flex-wrap:wrap;padding:2px 18px 12px;font-family:var(--mono);font-size:10.5px;color:var(--faint)}
+.sim-legend i{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px;vertical-align:-1px}
+.sim-stats{display:flex;gap:26px;flex-wrap:wrap;padding:11px 18px;border-top:1px solid var(--border);font-family:var(--mono);font-size:12px;color:var(--faint)}
+.sim-stats b{color:var(--text);font-size:14px;margin-left:6px}
+.lane{cursor:pointer}
+.lane-ring{fill:none;stroke:#2a3344;stroke-width:1.5}
+.lane-cd{fill:none;stroke:var(--accent);stroke-width:2.5;opacity:0}
+.lane-core{fill:#1b2230;stroke:#3a4558;stroke-width:1.5;transition:fill .25s,stroke .25s}
+.lane:hover .lane-core{stroke:var(--dim)}
+.lane-name{font-family:var(--mono);font-size:11px;fill:var(--dim)}
+.lane-sub{font-family:var(--mono);font-size:9.5px;fill:var(--faint)}
+.lane.cd-state .lane-core{stroke:var(--accent)}
+.lane.cd-state .lane-name{fill:var(--accent)}
+.lane.off-state .lane-core{opacity:.3}
+.lane.off-state .lane-name{opacity:.4}
+.lane.hit .lane-core{fill:var(--green);stroke:var(--green)}
+.pkt-n{fill:#9aa4b5}
+.pkt-job{fill:var(--gold)}
+.err-float{font-family:var(--mono);font-size:11.5px;font-weight:700;fill:var(--accent);animation:floatUp 1.4s ease forwards}
+@keyframes floatUp{from{opacity:1;transform:translateY(0)}to{opacity:0;transform:translateY(-28px)}}
+.wall-body{fill:#1a2029;stroke:#343e50;stroke-width:1.5}
+.gate-door{fill:var(--code-bg);stroke:#343e50;stroke-width:1.5}
+.gate-label{font-family:var(--serif);font-weight:700;font-size:11.5px;fill:var(--dim);letter-spacing:.2em}
+.client-box{fill:#141922;stroke:#2a3344;stroke-width:1.5}
+.flow-line{stroke:#232a38;stroke-width:1;stroke-dasharray:3 5}
+.toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:var(--card);border:1px solid var(--border);border-left:3px solid var(--gold);color:var(--text);font-size:12.5px;padding:10px 18px;border-radius:8px;z-index:99;box-shadow:0 12px 40px -12px rgba(0,0,0,.8);opacity:0;transition:opacity .25s;pointer-events:none;max-width:80vw}
+.toast.show{opacity:1}
+
+/* misc */
+.foot{margin-top:44px;text-align:center;font-family:var(--mono);font-size:11.5px;color:var(--faint);line-height:2.2}
+.foot .guan{font-family:var(--serif);font-weight:900;color:var(--accent);font-size:15px}
+.btn{
+  font-family:var(--mono);font-size:12px;color:var(--dim);background:none;
+  border:1px solid var(--border);border-radius:5px;padding:4px 12px;cursor:pointer;transition:all .15s;
+}
+.btn:hover{color:var(--text);border-color:var(--border-hi)}
+.btn.acc{color:#fff;background:var(--accent);border-color:var(--accent)}
+#started-line{font-family:var(--mono);font-size:11.5px;color:var(--faint)}
+.mock-badge{
+  display:none;font-family:var(--mono);font-size:10.5px;color:var(--gold);
+  border:1px dashed rgba(217,164,65,.5);border-radius:4px;padding:2px 8px;
+}
+.mock-badge.show{display:inline-block}
 </style>
 </head>
 <body>
-<div class="nav">
-<span><a href="#/" id="brandLink">ShanHai Gateway</a></span>
-<span id="navLinks"></span>
+
+<div id="connbar">⚠ API 连接中断 · 每 2s 自动重试 · 检查网关进程 / 网络后等待恢复</div>
+
+<nav>
+  <div class="in">
+    <div class="brand">
+      <div class="seal">关</div>
+      <div>
+        <b>山海关 · 运维看板</b>
+        <small>SHANHAI GATEWAY OPS</small>
+      </div>
+    </div>
+    <div class="links">
+      <a href="#/" data-nav="dash" class="active">仪表盘</a>
+      <a href="#/docs" data-nav="docs">文档</a>
+      <a id="wbPanelLink" href="#" target="_blank" rel="noopener" title="WorkBuddy Panel（公网）">WorkBuddy ↗</a>
+      <span class="live" id="liveDot"><i></i><span id="liveTxt">连接中…</span></span>
+      <span class="mock-badge" id="mockBadge">MOCK 演示数据</span>
+    </div>
+  </div>
+</nav>
+
+<div class="wrap">
+
+  <!-- ═══════════ 仪表盘 ═══════════ -->
+  <div class="view active" id="view-dash">
+
+    <div class="sec-h">
+      <span class="no">01 / 总览</span><h2>流量总览</h2>
+      <span class="hint" id="started-line">—</span>
+    </div>
+    <div class="grid-k" id="kpiRow"></div>
+
+    <div class="sec-h"><span class="no">02 / 引擎</span><h2>路由引擎 · LIVE</h2>
+      <span class="hint">车道状态实时同步 /api/stats · 金点 = 任务亲和 · 点车道 → 死接口 onLaneClick</span></div>
+    <div class="sim-panel">
+      <div class="sim-head">
+        <span class="live2">LIVE · SWRR ROUTING</span>
+        <span>熔断 / 冷却 / 停用 = 真实后端状态 · 红圈倒计时 = cooldown_remain_s</span>
+      </div>
+      <svg id="sim" viewBox="0 0 920 380" xmlns="http://www.w3.org/2000/svg" aria-label="SWRR 路由实时模拟"></svg>
+      <div class="sim-legend">
+        <span><i style="background:#9aa4b5"></i>普通请求</span>
+        <span><i style="background:var(--gold)"></i>任务亲和（X-Job-Id，钉回同一条道）</span>
+        <span><i style="background:var(--accent)"></i>429 / 冷却 → 换道重试</span>
+        <span><i style="background:var(--green)"></i>命中后端</span>
+      </div>
+      <div class="sim-stats">
+        <span>已路由<b id="sRouted">0</b></span>
+        <span>换道重试<b id="sReroute">0</b></span>
+        <span>冷却中（真实）<b id="sCd">0</b></span>
+        <span>钉住任务（真实）<b id="sPin">0</b></span>
+      </div>
+    </div>
+
+    <div class="sec-h"><span class="no">03 / TOKEN</span><h2>用量与费用</h2></div>
+    <div class="grid-k" id="tokenRow"></div>
+
+    <div class="sec-h">
+      <span class="no">04 / 路由池</span><h2>后端状态</h2>
+      <span class="hint">熔断 / 冷却中的后端会整行标红 · 兜底后端单列</span>
+    </div>
+    <div class="duo">
+      <div class="card">
+        <div class="card-h"><b>主轮转池</b><span class="hint" id="primaryCount"></span></div>
+        <div class="tbl-wrap"><table id="primaryTbl"></table></div>
+      </div>
+      <div class="card">
+        <div class="card-h"><b>会话亲和（X-Job-Id）</b><span class="hint">affinity 同形对象</span></div>
+        <div class="pad" id="affCard"></div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:12px">
+      <div class="card-h"><b>兜底池</b><span class="hint">is_fallback · 不进候选表，但熔断/冷却恰恰最需要可见</span></div>
+      <div class="tbl-wrap"><table id="fallbackTbl"></table></div>
+    </div>
+
+    <div class="sec-h"><span class="no">05 / 配额</span><h2>配额指挥舱</h2></div>
+    <div class="qcards" id="quotaCards"></div>
+    <div class="qnote">数据源：OpenCode 官方用量 API + 火山方舟 OpenAPI（实现参考 dsh-quota-panel / token-monitor，MIT，出处声明见 <code>scripts/quota_probe.py</code>）· 每 30s 刷新</div>
+
+    <div class="sec-h"><span class="no">06 / 用量分布</span><h2>今日逐小时 Token</h2></div>
+    <div class="card">
+      <div class="pad">
+        <div class="chart" id="hourlyChart"></div>
+        <div class="chart-x" id="hourlyX"></div>
+      </div>
+    </div>
+    <div class="card" style="margin-top:12px">
+      <div class="card-h"><b>按后端用量 · 本月</b><span class="hint">费用按后端 Pricing 现算，没配单价的不回费用</span></div>
+      <div class="tbl-wrap"><table id="tokenByBackend"></table></div>
+    </div>
+
+    <div class="sec-h">
+      <span class="no">07 / 实时</span><h2>最近请求</h2>
+      <span class="hint">环形缓冲 ≤200 条 · 新记录顶部滚动插入</span>
+    </div>
+    <div class="card">
+      <div class="tbl-wrap recent-scroll" id="recentScroll">
+        <table id="recentTbl"></table>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ═══════════ 文档 ═══════════ -->
+  <div class="view" id="view-docs">
+    <div class="sec-h"><span class="no">API</span><h2>看板数据接口</h2></div>
+    <div class="card">
+      <div class="tbl-wrap">
+        <table>
+          <tr><th style="width:220px">端点</th><th style="width:70px">方法</th><th>说明</th></tr>
+          <tr><td class="mono">/api/stats</td><td class="mono">GET</td><td class="dim">运行指标：后端运行态 / 亲和计数 / RPM（内存态，2s）</td></tr>
+          <tr><td class="mono">/api/metrics</td><td class="mono">GET</td><td class="dim">持久化聚合：总量 / 今日 / uptime（attempts 表）</td></tr>
+          <tr><td class="mono">/api/tokens</td><td class="mono">GET</td><td class="dim">token 用量专项：按时段汇总 / 按后端 / 逐小时 / 费用现算</td></tr>
+          <tr><td class="mono">/api/recent</td><td class="mono">GET</td><td class="dim">最近请求：环形缓冲 ≤200 条，最新在前</td></tr>
+          <tr><td class="mono">/quota.json</td><td class="mono">GET</td><td class="dim">配额指挥舱数据（quota_probe 写的磁盘快照，带 Last-Modified）</td></tr>
+          <tr><td class="mono">/api/dashkey</td><td class="mono">GET</td><td class="dim">取静态 API Key（本页用）</td></tr>
+        </table>
+      </div>
+    </div>
+
+    <div class="sec-h"><span class="no">KEY</span><h2>静态 API Key</h2></div>
+    <div class="card">
+      <div class="pad">
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+          <code id="dashKeyVal" style="font-size:13.5px;word-break:break-all;user-select:all">读取中…</code>
+          <button class="btn acc" id="dashKeyCopy" style="display:none">复制</button>
+        </div>
+        <p style="font-size:12px;color:var(--dim);margin-top:10px" id="dashKeyNote">读取中…</p>
+      </div>
+    </div>
+
+    <div class="sec-h"><span class="no">CONSUME</span><h2>captures 消费契约（速记）</h2></div>
+    <div class="card">
+      <div class="pad" style="font-size:12.5px;color:var(--dim);line-height:2">
+        可用性看 <code>usable</code>，内容有无看 <code>partial_ratio</code>，截断看 <code>truncated</code>，
+        同 <code>rid</code> 多条按 <code>ts</code> 排序取最后一条 <code>usable=true</code>。
+        <code>status</code> 只在有实义 HTTP 码时参考（partial 中途断是 200，别拿它当完成判据）。
+      </div>
+    </div>
+  </div>
+
+  <div class="foot">
+    <span class="guan">关</span> 山海关 · ShanHaiGateway · 把失败截住，把账单砍下来<br>
+    <span id="footNow">—</span>
+  </div>
 </div>
-<div class="container" id="app"><p class="sub">Loading...</p></div>
+
 <script>
-const API=location.origin;
-let lang=localStorage.getItem("lang")||"zh";
+"use strict";
+/* ═══════════ 基础 ═══════════ */
+const API = location.origin;
+const MOCK = /[?&]mock/.test(location.search) || location.protocol === "file:";
+const REFRESH_MS = 2000, QUOTA_MS = 30000, LOG_MAX = 200;
 
-const T={
-zh:{dashboard:"仪表盘",docs:"文档",wbPanel:"WorkBuddy",loading:"加载中...",totalRequests:"总请求数",success:"成功",failed:"失败",last60s:"近60秒",rpm:"RPM",today:"今日",todayTokens:"今日 Token",monthTokens:"本月 Token",hourTokens:"本小时 Token",totalTokens:"累计 Token",cachedTokens:"本月缓存命中",costUsd:"本月估算费用",byBackend:"轮转模型",recentRequests:"最近请求",time:"时间",backend:"后端",status:"状态",latency:"耗时",inChars:"入字符",outChars:"出字符",fallback:"兜底模型",concurrency:"并发",waiters:"排队",maxConcurrency:"上限",circuit:"熔断",cooldown:"冷却",seq:"序号",rid:"请求ID",model:"模型",stream:"流式",quotaCenter:"配额指挥舱",wRolling:"5h",wSession:"会话",wWeek:"周",wMonth:"月",resetIn:"回血",quotaNoKey:"缺火山 AK/SK",quotaErr:"查询失败",quotaStale:"未取到新值，沿用",quotaUpdated:"数据更新",quotaSrc:"数据源：OpenCode 官方用量 API + 火山方舟 OpenAPI（实现参考 dsh-quota-panel / token-monitor，MIT，出处声明见 scripts/quota_probe.py）"},
-en:{dashboard:"Dashboard",docs:"Docs",wbPanel:"WorkBuddy",loading:"Loading...",totalRequests:"Total Requests",success:"Success",failed:"Failed",last60s:"Last 60s",rpm:"RPM",today:"Today",todayTokens:"Today Tokens",monthTokens:"Month Tokens",hourTokens:"Hour Tokens",totalTokens:"Total Tokens",cachedTokens:"Month Cached",costUsd:"Month Est. Cost",byBackend:"Primary Backends",recentRequests:"Recent Requests",time:"Time",backend:"Backend",status:"Status",latency:"Latency",inChars:"In",outChars:"Out",fallback:"Fallback",concurrency:"Concurrency",waiters:"Waiters",maxConcurrency:"Max",circuit:"Circuit",cooldown:"Cooldown",seq:"Seq",rid:"RID",model:"Model",stream:"Stream",quotaCenter:"Quota Center",wRolling:"5h",wSession:"Session",wWeek:"Week",wMonth:"Month",resetIn:"Resets",quotaNoKey:"Missing Volc AK/SK",quotaErr:"Query failed",quotaStale:"No fresh value, keeping",quotaUpdated:"Data at",quotaSrc:"Sources: OpenCode official usage API + Volcengine Ark OpenAPI (implemented with reference to dsh-quota-panel / token-monitor, MIT — notices in scripts/quota_probe.py)"}
-};
-function t(k){return T[lang][k]||k}
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 
-function setLang(l){lang=l;localStorage.setItem("lang",l);document.documentElement.lang=l==="zh"?"zh":"en";render()}
-
-function renderNav() {
-  // wb-panel 地址不入库（私有基础设施）：默认**同主机回退**——看板在哪个地址
-  // 被打开，就指向那个主机的 :7863/panel/（wb2api 的 UI 与 API 同端口，绑 *:7863；
-  // 局域网直达；公网经 VPS 转发，仓库里没有任何真实 IP）。面板不在同机时才覆盖：
-  //   localStorage.setItem("wbPanelUrl", "http://<面板真实地址>/panel/")
-  // 注意：localStorage 按源隔离，改完要整页刷新；地址栏用哪个源就在哪个源设。
-  const WB_PANEL_URL = localStorage.getItem("wbPanelUrl") || `http://${location.hostname}:7863/panel/`;
-  const nav = document.getElementById("navLinks");
-  const langBtn = `<span style="margin-left:16px"><button class="lang-btn ${lang==='zh'?'active':''}" onclick="setLang('zh')">中</button><button class="lang-btn ${lang==='en'?'active':''}" onclick="setLang('en')">EN</button></span>`;
-  nav.innerHTML = `<a href="#/" class="${location.hash==='#/'||location.hash===''?'active':''}">${t("dashboard")}</a><a href="#/docs" class="${location.hash==='#/docs'?'active':''}">${t("docs")}</a><a href="${WB_PANEL_URL}" target="_blank" rel="noopener" title="WorkBuddy Panel（公网）">${t("wbPanel")}</a>${langBtn}`;
-}
-
-const tagM={ok:'tag-ok',fail:'tag-fail',in_flight:'tag-in'};
-const tag=(s)=>`<span class="tag ${tagM[s]||'tag-in'}">${s}</span>`;
-const kb=(n)=>(n/1024).toFixed(1);
-const si=(n)=>n===undefined?'-':n;
 function fmtTok(n){
-  n=Number(n)||0;
-  if(lang==='zh'){
-    if(n>=1e8)return (n/1e8).toFixed(2)+'亿';
-    if(n>=1e4)return (n/1e4).toFixed(2)+'万';
-    return String(n);
-  }
-  if(n>=1e9)return (n/1e9).toFixed(2)+'B';
-  if(n>=1e6)return (n/1e6).toFixed(2)+'M';
-  if(n>=1e3)return (n/1e3).toFixed(1)+'k';
+  n = Number(n) || 0;
+  if (n >= 1e8) return (n/1e8).toFixed(2) + "<small>亿</small>";
+  if (n >= 1e4) return (n/1e4).toFixed(2) + "<small>万</small>";
   return String(n);
 }
+function fmtInt(n){ return (Number(n)||0).toLocaleString("zh-CN"); }
+function fmtUptime(s){
+  s = Math.max(0, Math.floor(s||0));
+  const d = Math.floor(s/86400), h = Math.floor(s%86400/3600), m = Math.floor(s%3600/60);
+  return (d ? d+"天" : "") + h + "小时" + m + "分";
+}
+function fmtCountdown(iso){
+  if (!iso) return "-";
+  const d = new Date(iso) - Date.now();
+  if (isNaN(d)) return "-";
+  if (d <= 0) return "已回血";
+  const days = Math.floor(d/86400000), h = Math.floor(d%86400000/3600000), m = Math.floor(d%3600000/60000);
+  return (days>0 ? days+"天" : "") + h + "时" + m + "分";
+}
+/* 数字首次出现时滚动到位，之后直接赋值（避免 2s 轮询时数字抖动） */
+const seenNums = new Set();
+function setNum(elId, value, html){
+  const el = $(elId);
+  if (!el) return;
+  const target = Number(value) || 0;
+  if (seenNums.has(elId)) { el.innerHTML = html ?? fmtInt(target); return; }
+  seenNums.add(elId);
+  const t0 = performance.now(), dur = 900;
+  (function step(t){
+    const k = Math.min(1, (t-t0)/dur), e = 1 - Math.pow(1-k, 3);
+    el.innerHTML = html ? html.replace(/([\d.]+)/, (m)=>String(Math.round(parseFloat(m)*e))) : fmtInt(target*e);
+    if (k < 1) requestAnimationFrame(step);
+  })(t0);
+}
 
-// 最近请求滚动窗口：新记录插到顶部，超过上限从底部删最旧
-let logKeys=new Set();
-const LOG_MAX=200;
-function logKey(a){return `${a.Rid||''}:${a.Seq||0}:${a.Status||0}:${a.LatMs||0}:${a.OK?'1':'0'}`}
-function recentRowHTML(a){
-  const cls=a.OK?'ok':a.Status>=400?'err':'';
-  return `<tr data-key="${logKey(a)}">
-    <td>${a.Rid?.slice(0,8)||'-'}</td>
-    <td>${a.Backend||'-'}</td>
-    <td>${a.Model||'-'}</td>
-    <td>${a.Stream?'S':'-'}</td>
-    <td class="${cls}">${a.Status||'-'}</td>
-    <td>${a.LatMs||0}ms</td>
-    <td>${a.Class||'-'}</td>
-    <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis">${a.Err||'-'}</td>
+/* ═══════════ 导航 / 链接 ═══════════ */
+const WB_PANEL_URL = localStorage.getItem("wbPanelUrl")
+  || (MOCK ? "#" : `http://${location.hostname}:7863/panel/`);
+$("wbPanelLink").href = WB_PANEL_URL;
+if (MOCK) $("mockBadge").classList.add("show");
+
+function route(){
+  const docs = location.hash === "#/docs";
+  $("view-docs").classList.toggle("active", docs);
+  $("view-dash").classList.toggle("active", !docs);
+  document.querySelectorAll("[data-nav]").forEach(a =>
+    a.classList.toggle("active", a.dataset.nav === (docs ? "docs" : "dash")));
+}
+addEventListener("hashchange", route); route();
+
+/* ═══════════ 拉取与状态 ═══════════ */
+let connOK = null;
+function setConn(ok){
+  if (connOK === ok) return;
+  connOK = ok;
+  $("connbar").classList.toggle("show", !ok);
+  $("liveDot").classList.toggle("down", !ok);
+  $("liveTxt").textContent = ok ? "LIVE" : "连接中断";
+}
+async function getJSON(path){
+  const res = await fetch(API + path);
+  if (res.status === 401 && !MOCK && location.pathname !== "/login"){ location.href = "/login"; throw new Error("unauthorized"); }
+  if (!res.ok) throw new Error(path + " -> " + res.status);
+  return res.json();
+}
+
+/* ═══════════ 总览 / token ═══════════ */
+function kpi(v, k, cls, id){
+  return `<div class="stat ${cls||""}"><div class="v" id="${id||""}">${v}</div><div class="k">${k}</div></div>`;
+}
+function renderKPI(m, stats){
+  const total = m.total_requests||0, ok = m.total_ok||0, fail = m.total_fail||0;
+  const rate = total ? (ok/total*100).toFixed(2) + "%" : "—";
+  $("kpiRow").innerHTML =
+    kpi("0", "总请求", "acc", "kTotal") +
+    kpi("0", "成功率", "ok", "kRate") +
+    kpi("0", "近 60 秒", "", "k60") +
+    kpi("0", "RPM", "warn", "kRpm") +
+    kpi("0", "今日请求", "", "kToday") +
+    kpi("0", "进程 uptime", "", "kUp");
+  setNum("kTotal", total);
+  $("kRate").textContent = rate;
+  setNum("k60", stats.recent_60s ?? m.recent_60s ?? 0);
+  setNum("kRpm", stats.rpm ?? 0);
+  setNum("kToday", m.today_requests||0);
+  $("kUp").innerHTML = fmtUptime(m.uptime_sec) + "<small></small>";
+  $("started-line").textContent = "started " + (m.started || "—") + (MOCK ? " · mock" : "");
+}
+function renderTokens(tk){
+  const cached = (tk.by_backend||[]).reduce((s,x)=>s+(x.cached_tokens||0), 0);
+  $("tokenRow").innerHTML =
+    kpi("0", "本小时 Token", "", "tHour") +
+    kpi("0", "今日 Token", "ok", "tToday") +
+    kpi("0", "本月 Token", "warn", "tMonth") +
+    kpi("0", "累计 Token", "", "tAll") +
+    kpi("0", "本月缓存命中", "ok", "tCache") +
+    kpi("$0", "本月估算费用", "warn", "tCost");
+  $("tHour").innerHTML = fmtTok(tk.hour_tokens);
+  $("tToday").innerHTML = fmtTok(tk.today_tokens);
+  $("tMonth").innerHTML = fmtTok(tk.month_tokens);
+  $("tAll").innerHTML = fmtTok(tk.total_tokens);
+  $("tCache").innerHTML = fmtTok(cached);
+  $("tCost").innerHTML = "$" + (Number(tk.month_cost_usd)||0).toFixed(2) + "<small></small>";
+}
+
+/* ═══════════ 后端表 ═══════════ */
+function statusPill(b){
+  if (b.enabled === false) return '<span class="pill off"><i></i>停用</span>';
+  if (b.circuit_open) return '<span class="pill hot"><i></i>熔断 OPEN</span>';
+  if ((b.cooldown_remain_s||0) > 0) return `<span class="pill warn"><i></i>冷却 ${Math.round(b.cooldown_remain_s)}s</span>`;
+  return '<span class="pill ok"><i></i>正常</span>';
+}
+function backendRow(b){
+  const concPct = b.concurrency ? Math.min(100, Math.round((b.in_flight||0)/b.concurrency*100)) : 0;
+  const barCls = concPct >= 90 ? "hot" : concPct >= 70 ? "warn" : "";
+  const bd = Object.entries(b.fail_breakdown||{}).map(([k,v])=>`${k}:${v}`).join("  ") || "—";
+  const hot = b.circuit_open || (b.cooldown_remain_s||0) > 0;
+  const off = b.enabled === false;
+  return `<tr class="${hot?"row-hot":""}${off?" row-off":""}">
+    <td><b>${esc(b.name)}</b>${b.is_fallback?' <span class="seqb">兜底</span>':""}${b.sticky_count?` <span class="seqb" title="该后端当前钉着的会话数">📌${b.sticky_count}</span>`:""}
+      <div style="font-size:10.5px;color:var(--faint)">${esc(b.model||"")} · ${esc(b.account||"")} · keys ${b.keys??"-"}${b.timeout?` · timeout ${b.timeout}s`:""}</div></td>
+    <td>${b.weight??"-"}</td>
+    <td class="conc-cell"><div class="bar-row"><div class="bar-track"><span class="bar-fill ${barCls}" style="width:${concPct}%"></span></div></div><div class="sub">${b.in_flight||0} / ${b.concurrency||0} 在飞 · 排队 ${b.waiters||0}</div></td>
+    <td class="mono">${fmtInt(b.attempts||0)}</td>
+    <td class="mono pos">${fmtInt(b.success||0)}</td>
+    <td class="mono ${b.failed?"neg":""}" title="${esc(bd)}">${fmtInt(b.failed||0)}</td>
+    <td>${statusPill(b)}</td>
+    <td class="dim" style="max-width:220px;overflow:hidden;text-overflow:ellipsis" title="${esc(b.last_error||"")}">${esc(b.last_error||"-")}</td>
   </tr>`;
 }
-function updateRecentLogs(logs){
-  const tbody=document.querySelector('#recentLogs tbody');
-  if(!tbody||!Array.isArray(logs))return;
-  const container=tbody.closest('.card');
-  // 用户是否停在顶部（贴顶时才自动跟随新记录）
-  const atTop=!container||container.scrollTop<=24;
-  const ph=tbody.querySelector('td[colspan]');
-  if(ph)ph.parentElement.remove();
-  // logs 为最新在前；挑出没渲染过的，倒序 prepend 使最新落在顶部
-  const fresh=[];
-  for(const a of logs){
-    const k=logKey(a);
-    if(logKeys.has(k))continue;
+function backendHead(){
+  return `<tr><th>后端 / 模型 / 账号</th><th>权重</th><th>并发</th><th>尝试</th><th>成功</th><th>失败</th><th>状态</th><th>最近错误</th></tr>`;
+}
+function renderStats(d){
+  Sim.sync(d.backends||[], d.rpm||0, d.affinity||{});
+  $("sPin").textContent = (d.affinity&&d.affinity.pinned_jobs)||0;
+  const primary = d.backends.filter(b=>!b.is_fallback);
+  const fallback = d.backends.filter(b=>b.is_fallback);
+  $("primaryCount").textContent = primary.length + " 在册";
+  $("primaryTbl").innerHTML = backendHead() + (primary.map(backendRow).join("") || '<tr><td colspan="8" style="color:var(--faint)">无后端</td></tr>');
+  $("fallbackTbl").innerHTML = backendHead() + (fallback.map(backendRow).join("") || '<tr><td colspan="8" style="color:var(--faint)">未配置兜底后端</td></tr>');
+  renderAffinity(d);
+}
+function renderAffinity(d){
+  const a = d.affinity || {};
+  const hits = a.hits||0, misses = a.misses||0, puts = a.puts||0, pinned = a.pinned_jobs||0;
+  const denom = hits + misses;
+  const rate = denom ? (hits/denom*100) : null;
+  $("affCard").innerHTML = `
+    <div class="aff-big"><span class="pct">${rate===null?"—":rate.toFixed(1)+"%"}</span><span class="lbl">亲和命中率<br>(hits / hits+misses)</span></div>
+    <div class="bar-row"><div class="bar-track"><span class="bar-fill ${rate>=50?"":rate===null?"":"warn"}" style="width:${rate===null?0:Math.max(2,rate)}%"></span></div></div>
+    <div class="aff-nums">
+      <div><div class="n">${fmtInt(hits)}</div><div class="t">hits</div></div>
+      <div><div class="n">${fmtInt(misses)}</div><div class="t">misses</div></div>
+      <div><div class="n">${fmtInt(puts)}</div><div class="t">puts</div></div>
+      <div><div class="n">${fmtInt(pinned)}</div><div class="t">pinned_jobs</div></div>
+    </div>
+    <div style="font-size:11px;color:var(--faint);margin-top:12px">同一任务钉回同一后端，前缀缓存的复用单元接上了。轮询就是天花板，亲和是把天花板顶开的那根杆。</div>`;
+}
+
+/* ═══════════ 配额指挥舱 ═══════════ */
+function winRow(label, w){
+  if (!w) return "";
+  const p = Math.max(0, Math.min(100, Number(w.percent)||0));
+  const cls = p >= 90 ? "hot" : p >= 70 ? "warn" : "";
+  return `<div class="win-row"><span>${label}</span>
+    <div class="bar-track"><span class="bar-fill ${cls}" style="width:${p}%"></span></div>
+    <span class="pct">${p}%</span><span class="reset">回血 ${fmtCountdown(w.resetsAt)}</span></div>`;
+}
+function quotaCard(title, item){
+  if (!item) return "";
+  let inner = "";
+  if (item.status === "ok" || item.status === "stale"){
+    const w = item.windows || {};
+    inner = winRow("5h", w.rolling) + winRow("周", w.weekly) + winRow("月", w.monthly);
+    if (!inner) inner = '<div style="color:var(--faint);font-size:11.5px">查询失败</div>';
+    else if (item.status === "stale")
+      inner += `<div style="font-size:10.5px;color:var(--gold);margin-top:8px">未取到新值，沿用 ${item.staleAt ? new Date(item.staleAt).toLocaleTimeString() : ""} · ${esc((item.msg||"").slice(0,70))}</div>`;
+  } else if (item.status === "need_credentials"){
+    inner = '<div style="color:var(--gold);font-size:11.5px">缺火山 AK/SK</div><div style="font-size:10.5px;color:var(--faint)">' + esc((item.msg||"").slice(0,90)) + "</div>";
+  } else {
+    inner = '<div style="color:var(--red);font-size:11.5px">查询失败</div><div style="font-size:10.5px;color:var(--faint)">' + esc((item.msg||"").slice(0,90)) + "</div>";
+  }
+  return `<div class="qcard"><b>${esc(title)}</b>${inner}</div>`;
+}
+function renderQuota(q){
+  let html = "";
+  for (const [name, item] of Object.entries(q.opencode || {})) html += quotaCard("opencode · " + name, item);
+  const volc = q.volc || {};
+  for (const [name, item] of Object.entries(volc)) html += quotaCard("volc · " + name, item);
+  $("quotaCards").innerHTML = html || '<div class="qcard" style="color:var(--faint)">暂无配额数据（quota_probe 未运行或 quota.json 缺失）</div>';
+}
+
+/* ═══════════ 逐小时图 + 按后端用量 ═══════════ */
+function renderHourly(hourly){
+  const rows = hourly || [];
+  const max = Math.max(1, ...rows.map(r=>r.total_tokens||0));
+  $("hourlyChart").innerHTML = rows.map(r=>{
+    const h = Math.max(2, Math.round((r.total_tokens||0)/max*100));
+    return `<div class="bar" style="height:${h}%" data-v="${r.hour} · ${fmtTok(r.total_tokens).replace(/<[^>]+>/g,"")} tokens"></div>`;
+  }).join("");
+  $("hourlyX").innerHTML = rows.map(r=>`<span>${(r.hour||"").replace(":00","")}</span>`).join("");
+}
+function renderTokenByBackend(rows){
+  $("tokenByBackend").innerHTML =
+    `<tr><th>后端</th><th>Prompt</th><th>Completion</th><th>合计</th><th>缓存命中</th><th>费用(本月)</th></tr>` +
+    ((rows||[]).map(r=>`<tr>
+      <td><b>${esc(r.backend||"-")}</b></td>
+      <td class="mono dim">${fmtTok(r.prompt_tokens)}</td>
+      <td class="mono dim">${fmtTok(r.completion_tokens)}</td>
+      <td class="mono">${fmtTok(r.total_tokens)}</td>
+      <td class="mono pos">${fmtTok(r.cached_tokens)}</td>
+      <td class="mono warn">${r.cost_usd!==undefined ? "$"+Number(r.cost_usd).toFixed(4) : "—"}</td>
+    </tr>`).join("") || '<tr><td colspan="6" style="color:var(--faint)">暂无数据</td></tr>');
+}
+
+/* ═══════════ 最近请求（增量滚动窗口） ═══════════ */
+const logKeys = new Set();
+function logKey(a){ return `${a.Rid||""}:${a.Seq||0}:${a.Status||0}:${a.LatMs||0}:${a.OK?"1":"0"}`; }
+function initRecent(){
+  $("recentTbl").innerHTML =
+    `<thead><tr><th>RID</th><th>后端</th><th>模型</th><th>S</th><th>状态</th><th>耗时</th><th>分类</th><th>错误</th></tr></thead><tbody></tbody>`;
+}
+function recentRow(a){
+  const cls = a.OK ? "pos" : (a.Status||0) >= 400 ? "neg" : "";
+  return `<tr data-key="${esc(logKey(a))}">
+    <td class="mono dim">${esc((a.Rid||"-").slice(0,8))}</td>
+    <td>${esc(a.Backend||"-")}</td>
+    <td class="dim">${esc(a.Model||"-")}</td>
+    <td class="mono dim">${a.Stream?"S":"-"}</td>
+    <td class="mono ${cls}">${a.Status||"-"}</td>
+    <td class="mono">${a.LatMs||0}ms</td>
+    <td class="mono dim">${esc(a.Class||"-")}</td>
+    <td><div class="errtxt dim" title="${esc(a.Err||"")}">${esc(a.Err||"-")}</div></td>
+  </tr>`;
+}
+function pushRecent(logs){
+  const tbody = $("recentTbl").querySelector("tbody");
+  if (!tbody || !Array.isArray(logs)) return;
+  const sc = $("recentScroll");
+  const atTop = sc.scrollTop <= 24;
+  for (let i = logs.length - 1; i >= 0; i--){
+    const a = logs[i], k = logKey(a);
+    if (logKeys.has(k)) continue;
     logKeys.add(k);
-    fresh.push(a);
+    tbody.insertAdjacentHTML("afterbegin", recentRow(a));
   }
-  for(let i=fresh.length-1;i>=0;i--){
-    tbody.insertAdjacentHTML('afterbegin',recentRowHTML(fresh[i]));
-  }
-  // 超过上限：从底部删最旧，同步清 key
-  while(tbody.children.length>LOG_MAX){
-    const last=tbody.lastElementChild;
-    if(!last)break;
-    logKeys.delete(last.getAttribute('data-key'));
+  while (tbody.children.length > LOG_MAX){
+    const last = tbody.lastElementChild;
+    if (!last) break;
+    logKeys.delete(last.getAttribute("data-key"));
     tbody.removeChild(last);
   }
-  if(!tbody.children.length){
-    tbody.innerHTML='<tr><td colspan=8 class="sub">No data</td></tr>';
-  }
-  if(atTop&&container)container.scrollTop=0;
+  if (atTop) sc.scrollTop = 0;
 }
 
+/* ═══════════ SWRR 路由引擎：车道 = 真实后端状态，车流 = 本地模拟 ═══════════ */
+let toastTimer=null;
+function toast(s){
+  let el=$("toast");
+  if(!el){el=document.createElement("div");el.id="toast";el.className="toast";document.body.appendChild(el);}
+  el.textContent=s;el.classList.add("show");
+  clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove("show"),2800);
+}
+
+/* ── 死接口：把下面三个换成 admin API 调用即可上线 ── */
+window.SHG = window.SHG || {};
+SHG.hooks = {
+  /* 点车道。建议：POST /admin/backend/{name}/probe 之类 */
+  onLaneClick(name){ toast(`死接口 onLaneClick("${name}") 已触发 —— 在 SHG.hooks 里接 admin API`); },
+  /* 手动拉爆一个后端（视觉 + 真实由你决定） */
+  breakLane(name){ toast(`死接口 breakLane("${name}") —— 预留`); },
+  /* 手动复活 / 清冷却 */
+  healLane(name){ toast(`死接口 healLane("${name}") —— 预留`); },
+};
+
+const Sim = (function(){
+  const NS = "http://www.w3.org/2000/svg";
+  const svg = $("sim");
+  const GX1=380, GY=190, GX2=550, LX=768, SX=122, CD_C=2*Math.PI*20, MAX_LANES=10;
+  let lanes=[], dots=[], lastSpawn=0, pinName=null, seq=0;
+  let routed=0, rerouted=0, rpm=0, running=false;
+
+  const shortName=(s)=>{ s=String(s||"?"); return s.length>15?s.slice(0,14)+"…":s; };
+  const laneY=(i,n)=> n<=1 ? GY : Math.min(51, 318/(n-1))*i + 52;
+  function mkns(tag,attrs){const el=document.createElementNS(NS,tag);for(const k in attrs)el.setAttribute(k,attrs[k]);return el;}
+
+  function build(backends){
+    lanes=[]; dots=[]; svg.innerHTML="";
+    svg.insertAdjacentHTML("beforeend",
+      '<line class="flow-line" x1="120" y1="130" x2="548" y2="130"/>' +
+      '<line class="flow-line" x1="120" y1="250" x2="548" y2="250"/>' +
+      '<rect class="client-box" x="34" y="158" width="86" height="64" rx="9"/>' +
+      '<text class="lane-sub" x="77" y="186" text-anchor="middle">调用方</text>' +
+      '<text class="lane-sub" x="77" y="204" text-anchor="middle">clients</text>' +
+      '<text class="lane-sub" x="34" y="146">→ 车道状态来自 /api/stats</text>' +
+      '<path class="wall-body" d="M395 150 h20 v-14 h20 v14 h20 v-14 h20 v14 h20 v-14 h20 v14 h20 v110 h-140 z"/>' +
+      '<path class="gate-door" d="M435 260 v-25 a30 30 0 0 1 60 0 v25 z"/>' +
+      '<text class="gate-label" x="465" y="288" text-anchor="middle">山海关 · SWRR</text>');
+    const n = backends.length;
+    const pktLayer = mkns("g",{}), fxLayer = mkns("g",{});
+    backends.slice(0, MAX_LANES).forEach((b,i)=>{
+      const y = laneY(i,n);
+      const g = mkns("g",{class:"lane"});
+      g.innerHTML =
+        `<circle class="lane-cd" cx="788" cy="${y}" r="20" transform="rotate(-90 788 ${y})"/>` +
+        `<circle class="lane-ring" cx="788" cy="${y}" r="15"/>` +
+        `<circle class="lane-core" cx="788" cy="${y}" r="9"/>` +
+        `<text class="lane-name" x="758" y="${y-2}" text-anchor="end">${esc(shortName(b.name))}</text>` +
+        `<text class="lane-sub" x="758" y="${y+11}" text-anchor="end"></text>`;
+      g.addEventListener("click", ()=>SHG.hooks.onLaneClick(b.name));
+      svg.insertBefore(g, pktLayer);
+      lanes.push({ name:b.name, g, core:g.querySelector(".lane-core"), cd:g.querySelector(".lane-cd"),
+        sub:g.querySelector(".lane-sub"), state:"ok", until:0, dur:1, y });
+    });
+    if (n > MAX_LANES){
+      svg.insertAdjacentHTML("beforeend",
+        `<text class="lane-sub" x="788" y="${laneY(MAX_LANES,n)+16}" text-anchor="middle">… 其余 ${n-MAX_LANES} 条车道略</text>`);
+    }
+    svg.appendChild(pktLayer); svg.appendChild(fxLayer);
+    Sim.pkts = pktLayer; Sim.fx = fxLayer;
+  }
+
+  function okLanes(){ const r=[]; lanes.forEach(l=>{ if(l.state==="ok") r.push(l); }); return r; }
+  function pick(job){
+    const ok = okLanes();
+    if (!ok.length) return null;
+    if (job){
+      if (!pinName || !ok.some(l=>l.name===pinName)){
+        pinName = ok[Math.floor(Math.random()*ok.length)].name;
+      }
+      return lanes.find(l=>l.name===pinName);
+    }
+    return ok[Math.floor(Math.random()*ok.length)];
+  }
+  function spawn(now){
+    const job = (seq++ % 4 === 0);
+    const lane = pick(job);
+    if (!lane) return;
+    const c = mkns("circle",{r: job?4.5:3.5, class: job?"pkt-job":"pkt-n", cx:SX, cy:190});
+    Sim.pkts.appendChild(c);
+    dots.push({el:c, sy:122+Math.random()*136, t:0, sp:.5+Math.random()*.22, tname:lane.name, job, rerouted:false});
+  }
+  function flash(l){
+    l.g.classList.add("hit");
+    setTimeout(()=>l.g.classList.remove("hit"), 320);
+  }
+  function enterCd(l, ms){
+    l.state="cd"; l.dur=Math.max(1,ms); l.until=performance.now()+l.dur;
+    l.g.classList.add("cd-state");
+    const t = mkns("text",{x:796, y:l.y-22, class:"err-float"});
+    t.textContent = l.g.classList.contains("off-state") ? "off" : "429";
+    Sim.fx.appendChild(t);
+    setTimeout(()=>t.remove(), 1400);
+  }
+
+  const interval = ()=> Math.max(220, Math.min(1200, rpm>0 ? Math.round(60000/rpm) : 1200));
+  function frame(now){
+    if (now - lastSpawn > interval()){ spawn(now); lastSpawn = now; }
+    for (let i=dots.length-1; i>=0; i--){
+      const d = dots[i];
+      d.t += d.sp/60;
+      if (d.t < .5){
+        const k = d.t/.5;
+        d.el.setAttribute("cx", SX+(GX1-SX)*k);
+        d.el.setAttribute("cy", d.sy+(GY-d.sy)*k);
+      } else {
+        let l = lanes.find(x=>x.name===d.tname);
+        if (!l){ d.el.remove(); dots.splice(i,1); continue; }
+        if (l.state!=="ok" && !d.rerouted){
+          const alt = pick(d.job);
+          if (alt && alt.name!==d.tname){ d.tname = alt.name; l = alt; rerouted++; }
+          d.rerouted = true;
+        }
+        const k = (d.t-.5)/.5;
+        d.el.setAttribute("cx", GX2+(LX-GX2)*k);
+        d.el.setAttribute("cy", GY+(l.y-GY)*Math.min(1,k*1.4));
+        if (k >= 1){ d.el.remove(); dots.splice(i,1); flash(l); routed++; }
+      }
+    }
+    let cdCount = 0;
+    lanes.forEach(l=>{
+      if (l.state==="cd"){
+        cdCount++;
+        const remain = l.until - now;
+        if (remain <= 0){ l.state="ok"; l.g.classList.remove("cd-state"); l.cd.style.opacity=0; }
+        else { l.cd.style.opacity=1; l.cd.style.strokeDashoffset = CD_C*(1-remain/l.dur); }
+      }
+    });
+    $("sCd").textContent = cdCount;
+    $("sRouted").textContent = routed;
+    $("sReroute").textContent = rerouted;
+    if (running) requestAnimationFrame(frame);
+  }
+
+  const Sim = {
+    pkts:null, fx:null,
+    /* renderStats 每 2s 调一次：车道集合变化就重建，状态变化就地同步 */
+    sync(backends, rpmNow, aff){
+      rpm = rpmNow||0;
+      const changed = backends.length!==lanes.length ||
+        lanes.some((l,i)=>!backends[i] || backends[i].name!==l.name);
+      if (changed) build(backends);
+      const now = performance.now();
+      backends.slice(0, MAX_LANES).forEach((b,i)=>{
+        const l = lanes[i]; if (!l) return;
+        const realCd = b.circuit_open ? Math.max(b.cooldown_remain_s||0, 60) : (b.cooldown_remain_s||0);
+        if (realCd > 0 && l.state!=="cd") enterCd(l, realCd*1000);
+        if (realCd > 0 && l.state==="cd"){ l.dur = Math.max(l.dur, 1); l.until = now + realCd*1000; }
+        l.g.classList.toggle("off-state", b.enabled===false);
+        l.sub.textContent = `w${b.weight??"-"} · ${b.in_flight||0}/${b.concurrency||0} · pin ${b.sticky_count||0}`;
+      });
+      if (aff && aff.pinned_jobs !== undefined && !okLanes().some(l=>l.name===pinName) && lanes.length && !lanes.some(l=>l.name===pinName)) pinName=null;
+    },
+    find(name){ return lanes.find(l=>l.name===name) || null; },
+    /* 视觉演示用：只影响模拟，不碰真实后端 */
+    forceBreak(name, ms){ const l=this.find(name); if(l&&l.state!=="cd") enterCd(l, ms||8000); },
+    forceHeal(name){ const l=this.find(name); if(l){ l.state="ok"; l.g.classList.remove("cd-state"); l.cd.style.opacity=0; } },
+  };
+
+  const vio = new IntersectionObserver(es=>es.forEach(e=>{
+    if (e.isIntersecting && !running){ running=true; requestAnimationFrame(frame); }
+    else if (!e.isIntersecting){ running=false; }
+  }), {threshold:.05});
+  vio.observe(svg);
+  return Sim;
+})();
+
+/* ═══════════ 主循环 ═══════════ */
 async function load(){
   try{
-    const res=await fetch(`${API}/api/stats`);
-    // 401 = 登录失效（网关重启会清空全部内存 session）。必须跳登录页：
-    // 否则每 2s 静默吃一个 401、页面永远冻在旧数据上，看起来像"不自动刷新"。
-    if(res.status===401){if(location.pathname!=='/login')location.href='/login';return;}
-    if(!res.ok)throw new Error('Failed to fetch');
-    const d=await res.json();
-    
-    // 总览卡片
-    const total={req:0,ok:0,fail:0};
-    d.backends.forEach(b=>{
-      total.req+=b.attempts||0;
-      total.ok+=b.success||0;
-      total.fail+=b.failed||0;
-    });
-    
-    document.getElementById('cards').innerHTML=[
-      [total.req,t('totalRequests'),'blue'],
-      [total.ok,t('success'),'ok'],
-      [total.fail,t('failed'),'err'],
-      [d.rpm||0,t('rpm'),'warn'],
-    ].map(([n,l,c])=>`<div class="stat"><div class="num ${c}">${n}</div><div class="label">${l}</div></div>`).join('');
-    
-    // token 用量卡片（费用只留顶部总估算一张；分后端明细 09-27 用户裁撤）
-    try{
-      const tk=await(await fetch(`${API}/api/tokens`)).json();
-      const cached=(tk.by_backend||[]).reduce((s,x)=>s+(x.cached_tokens||0),0);
-      document.getElementById('tokencards').innerHTML=[
-        [fmtTok(tk.hour_tokens),t('hourTokens'),'blue'],
-        [fmtTok(tk.today_tokens),t('todayTokens'),'ok'],
-        [fmtTok(tk.month_tokens),t('monthTokens'),'warn'],
-        [fmtTok(tk.total_tokens),t('totalTokens'),''],
-        [fmtTok(cached),t('cachedTokens'),'ok'],
-        ['$'+(tk.month_cost_usd||0).toFixed(2),t('costUsd'),'warn'],
-      ].map(([n,l,c])=>`<div class="stat"><div class="num ${c}">${n}</div><div class="label">${l}</div></div>`).join('');
-    }catch(e){}
-    
-    // 后端状态 - 分成轮转和兜底两类
-    const renderBackendRow = (b) => {
-      const concPct=b.concurrency?Math.round((b.in_flight||0)/b.concurrency*100):0;
-      const concColor=concPct>=90?'var(--danger)':concPct>=70?'var(--warn)':'var(--success)';
-      return `<tr>
-        <td>${b.name}</td>
-        <td><div class="bar-row"><div class="bar-wrap"><div class="bar" style="width:${concPct}%;background:${concColor}"></div></div>${b.in_flight||0}/${b.concurrency}</div></td>
-        <td>${b.waiters||0}</td>
-        <td class="ok">${b.success||0}</td>
-        <td class="err">${b.failed||0}</td>
-        <td>${b.circuit_open?'<span class="tag tag-fail">OPEN</span>':'<span class="tag tag-ok">OK</span>'}</td>
-        <td>${b.cooldown_remain_s>0?Math.round(b.cooldown_remain_s)+'s':'-'}</td>
-      </tr>`;
-    };
-    
-    const primary=d.backends.filter(b=>!b.is_fallback);
-    const fallback=d.backends.filter(b=>b.is_fallback);
-    
-    document.getElementById('primaryBackends').innerHTML=primary.map(renderBackendRow).join('')||'<tr><td colspan=7 class="sub">No data</td></tr>';
-    document.getElementById('fallbackBackend').innerHTML=fallback.map(renderBackendRow).join('')||'<tr><td colspan=7 class="sub">No data</td></tr>';
-    
-    // 最近请求日志（增量滚动：新记录进顶部，超限删最旧）
-    const logRes=await fetch(`${API}/api/recent`);
-    if(logRes.ok){
-      updateRecentLogs(await logRes.json());
-    }
-    
-  }catch(e){
-    console.error('Load failed:',e);
-  }
-}
-
-// ── 配额指挥舱：数据来自 scripts/quota_probe.py 写的静态 quota.json ──
-let quotaData=null;
-function fmtCountdown(iso){
-  if(!iso)return '-';
-  const d=new Date(iso)-Date.now();
-  if(isNaN(d))return '-';
-  if(d<=0)return lang==='zh'?'已回血':'reset';
-  const days=Math.floor(d/86400000),h=Math.floor(d%86400000/3600000),m=Math.floor(d%3600000/60000);
-  return lang==='zh'?`${days>0?days+'天':''}${h}时${m}分`:`${days>0?days+'d ':''}${h}h${m}m`;
-}
-function winRow(label,pct,resetsAt){
-  const p=Math.max(0,Math.min(100,Number(pct)||0));
-  const color=p>=90?'var(--danger)':p>=70?'var(--warn)':'var(--success)';
-  return `<div class="bar-row"><span style="width:36px;color:var(--sub);font-size:12px">${label}</span>
-    <div class="bar-wrap"><div class="bar" style="width:${p}%;background:${color}"></div></div>
-    <span style="width:36px;text-align:right;font-size:12px">${p}%</span>
-    <span style="width:104px;text-align:right;color:var(--sub);font-size:11px">${t('resetIn')} ${fmtCountdown(resetsAt)}</span></div>`;
-}
-function quotaCard(title,item,labels){
-  if(!item)return '';
-  let inner='';
-  if(item.status==='ok'||item.status==='stale'){
-    const w=item.windows||{};
-    inner=(labels.rolling&&w.rolling?winRow(labels.rolling,w.rolling.percent,w.rolling.resetsAt):'')
-      +(labels.weekly&&w.weekly?winRow(labels.weekly,w.weekly.percent,w.weekly.resetsAt):'')
-      +(labels.monthly&&w.monthly?winRow(labels.monthly,w.monthly.percent,w.monthly.resetsAt):'');
-    if(!inner)inner=`<div class="sub">${t('quotaErr')}</div>`;
-    else if(item.status==='stale')inner+=`<div class="sub warn" style="font-size:11px;margin-top:6px">${t('quotaStale')} ${item.staleAt?new Date(item.staleAt).toLocaleTimeString():''} · ${(item.msg||'').slice(0,70)}</div>`;
-  }else if(item.status==='need_credentials'){
-    inner=`<div class="sub warn">${t('quotaNoKey')}</div><div class="sub" style="font-size:11px">${(item.msg||'').slice(0,90)}</div>`;
-  }else{
-    inner=`<div class="sub err">${t('quotaErr')}</div><div class="sub" style="font-size:11px">${(item.msg||'').slice(0,90)}</div>`;
-  }
-  return `<div class="stat" style="text-align:left;padding:14px">
-    <div style="font-weight:600;margin-bottom:8px">${title}</div>${inner}</div>`;
+    const [stats, metrics] = await Promise.all([getJSON("/api/stats"), getJSON("/api/metrics")]);
+    renderKPI(metrics, stats);
+    renderStats(stats);
+    setConn(true);
+  }catch(e){ setConn(false); }
+  try{
+    renderTokens(await getJSON("/api/tokens"));
+  }catch(e){}
+  try{
+    pushRecent(await getJSON("/api/recent"));
+  }catch(e){}
 }
 async function loadQuota(){
-  try{
-    const r=await fetch(`${API}/quota.json`);
-    if(!r.ok)return;
-    quotaData=await r.json();
-  }catch(e){return}
-  renderQuota();
+  try{ renderQuota(await getJSON("/quota.json")); }catch(e){}
 }
-function renderQuota(){
-  const el=document.getElementById('quotaCards');
-  if(!el||!quotaData)return;
-  const q=quotaData;
-  const ocL={rolling:t('wRolling'),weekly:t('wWeek'),monthly:t('wMonth')};
-  const codingL={rolling:t('wSession'),weekly:t('wWeek'),monthly:t('wMonth')};
-  let html='';
-  for(const [name,item] of Object.entries(q.opencode||{})){
-    html+=quotaCard(`opencode · ${name}`,item,ocL);
-  }
-  html+=quotaCard('volc · Coding (volc_pro)',(q.volc||{}).coding,codingL);
-  html+=quotaCard('volc · Agent (volc_plan)',(q.volc||{}).agent,ocL);
-  el.innerHTML=html||`<div class="sub">${t('loading')}</div>`;
-  const ts=document.getElementById('quotaTs');
-  if(ts)ts.textContent=q.generated_at?`${t('quotaUpdated')} ${new Date(q.generated_at).toLocaleString()}`:'';
-}
-
-function renderDashboard(){
-  document.getElementById('app').innerHTML=`
-    <div class="card">
-      <h1>${t('dashboard')}</h1>
-      <div id="ts"></div>
-    </div>
-    
-    <div class="grid" id="cards"></div>
-    <div class="grid" id="tokencards"></div>
-    
-    <div class="card">
-      <h2>${t('quotaCenter')}<span id="quotaTs" style="float:right;font-weight:400;font-size:12px;color:var(--sub)"></span></h2>
-      <div class="grid" id="quotaCards" style="grid-template-columns:repeat(auto-fit,minmax(280px,1fr))"><div class="sub">${t('loading')}</div></div>
-      <div class="sub" style="margin-top:10px;font-size:12px">${t('quotaSrc')}</div>
-    </div>
-    
-    <div class="card">
-      <h2>${t('byBackend')}</h2>
-      <table id="backends">
-        <thead><tr>
-          <th>${t('backend')}</th>
-          <th>${t('concurrency')}</th>
-          <th>${t('waiters')}</th>
-          <th>${t('success')}</th>
-          <th>${t('failed')}</th>
-          <th>${t('circuit')}</th>
-          <th>${t('cooldown')}</th>
-        </tr></thead>
-        <tbody id="primaryBackends"></tbody>
-      </table>
-    </div>
-    
-    <div class="card">
-      <h2>${t('fallback')}</h2>
-      <table>
-        <thead><tr>
-          <th>${t('backend')}</th>
-          <th>${t('concurrency')}</th>
-          <th>${t('waiters')}</th>
-          <th>${t('success')}</th>
-          <th>${t('failed')}</th>
-          <th>${t('circuit')}</th>
-          <th>${t('cooldown')}</th>
-        </tr></thead>
-        <tbody id="fallbackBackend"></tbody>
-      </table>
-    </div>
-    
-    <div class="card" style="max-height:400px;overflow-y:auto">
-      <h2>${t('recentRequests')}</h2>
-      <table id="recentLogs">
-        <thead><tr>
-          <th>${t('rid')}</th>
-          <th>${t('backend')}</th>
-          <th>${t('model')}</th>
-          <th>${t('stream')}</th>
-          <th>${t('status')}</th>
-          <th>${t('latency')}</th>
-          <th>Class</th>
-          <th>Error</th>
-        </tr></thead>
-        <tbody></tbody>
-      </table>
-    </div>
-  `;
-  renderNav();
-  logKeys=new Set();   // 重建面板：重置滚动窗口
-  load();
-  loadQuota();   // 语言切换/重进页面立即重画配额卡（数据本体 30s 才拉一次）
-}
-
-function renderDocs(){
-  const base=location.origin;
-  document.getElementById('app').innerHTML=`
-    <div class="card"><h1>${lang==='zh'?'文档':'Documentation'}</h1><p class="sub">ShanHai Gateway ${lang==='zh'?'使用说明':'User Guide'}</p></div>
-    
-    <div class="card"><h2>${lang==='zh'?'快速开始':'Quick Start'}</h2>
-    <table>
-    <tr><th>${lang==='zh'?'参数':'Parameter'}</th><th>${lang==='zh'?'值':'Value'}</th></tr>
-    <tr><td style="font-weight:600">Base URL</td><td style="font-family:monospace;background:var(--bg);padding:4px 8px;border-radius:4px">${base}</td></tr>
-    <tr><td style="font-weight:600">Model</td><td style="font-family:monospace;background:var(--bg);padding:4px 8px;border-radius:4px">auto</td></tr>
-    <tr><td style="font-weight:600">Authorization</td><td style="font-family:monospace;background:var(--bg);padding:4px 8px;border-radius:4px" id="qsAuth">${lang==='zh'?'读取中…':'loading…'}</td></tr>
-    </table></div>
-
-    <div class="card"><h2>${lang==='zh'?'静态 API Key':'Static API Key'}</h2>
-    <p class="sub">${lang==='zh'
-      ? '其他设备（脚本 / OpenAI SDK）走公网口时不用登录换 cookie，带上这把 key 就行；网关重启也不会让它失效。'
-      : 'For other devices (scripts / OpenAI SDK) on the public port: no login, no cookie — just send this key. Gateway restarts do not invalidate it.'}</p>
-    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:12px">
-      <code id="dashKeyVal" style="font-size:14px;word-break:break-all;user-select:all">${lang==='zh'?'读取中…':'loading…'}</code>
-      <button id="dashKeyCopy" style="margin-left:auto;background:var(--primary);color:#fff;border:0;border-radius:6px;padding:7px 16px;font-size:13px;cursor:pointer;white-space:nowrap;display:none">${lang==='zh'?'复制':'Copy'}</button>
-    </div>
-    <p class="sub" style="margin-top:12px">${lang==='zh'?'请求头写法':'Header'}&nbsp;&nbsp;<code style="background:var(--bg);padding:2px 6px;border-radius:4px">Authorization: Bearer &lt;key&gt;</code></p>
-    <p class="sub" id="dashKeyNote">${lang==='zh'?'读取中…':'loading…'}</p>
-    </div>
-
-    <div class="card"><h2>cURL ${lang==='zh'?'示例':'Example'}</h2>
-    <div id="curlEx" style="background:var(--bg);padding:12px;border-radius:6px;font-family:monospace;font-size:13px;white-space:pre;overflow-x:auto;border:1px solid var(--border)"></div>
-    <p class="sub" style="margin-top:10px">${lang==='zh'
-      ? '浏览器打开看板走的是账号密码登录（cookie），不需要 key。'
-      : 'Opening the dashboard in a browser uses the password login (cookie) — no key needed.'}</p>
-    </div>
-
-    <div class="card"><h2>OpenAI SDK ${lang==='zh'?'示例':'Example'}</h2>
-    <div id="sdkEx" style="background:var(--bg);padding:12px;border-radius:6px;font-family:monospace;font-size:13px;white-space:pre;overflow-x:auto;border:1px solid var(--border)"></div>
-    </div>
-    
-    <div class="card"><h2>${lang==='zh'?'技术架构':'Architecture'}</h2>
-    <table>
-    <tr><th>${lang==='zh'?'层级':'Layer'}</th><th>技术</th><th>${lang==='zh'?'说明':'Role'}</th></tr>
-    <tr><td>${lang==='zh'?'网关':'Gateway'}</td><td>Go</td><td>${lang==='zh'?'路由/429降级/SSE透传/metrics':'Routing/429/SSE/metrics'}</td></tr>
-    <tr><td>${lang==='zh'?'路由策略':'Routing'}</td><td>${lang==='zh'?'配置驱动':'Config-driven'}</td><td id="routingStrategy" class="sub">${lang==='zh'?'读取中…':'loading…'}</td></tr>
-    <tr><td>Frontend</td><td>HTML + JS (go:embed)</td><td>${lang==='zh'?'嵌入Go二进制，单文件部署':'Embedded in Go binary'}</td></tr>
-    </table></div>
-    
-    <div class="card"><h2>${lang==='zh'?'端点一览':'Endpoints'}</h2>
-    <table>
-    <tr><th>Endpoint</th><th>Method</th><th>${lang==='zh'?'说明':'Description'}</th></tr>
-    <tr><td><code>/v1/chat/completions</code></td><td>POST</td><td>${lang==='zh'?'LLM 调用（OpenAI 兼容）':'LLM call (OpenAI-compatible)'}</td></tr>
-    <tr><td><code>/v1/models</code></td><td>GET</td><td>${lang==='zh'?'可用模型':'Available models'}</td></tr>
-    <tr><td><code>/api/stats</code></td><td>GET</td><td>${lang==='zh'?'运行指标':'Metrics'}</td></tr>
-    <tr><td><code>/admin/backend/{name}</code></td><td>GET/POST</td><td>${lang==='zh'?'后端管理':'Backend management'}</td></tr>
-    <tr><td><code>/api/dashkey</code></td><td>GET</td><td>${lang==='zh'?'取静态 API Key（本页用）':'Get static API key (used by this page)'}</td></tr>
-    <tr><td><code>/health</code></td><td>GET</td><td>${lang==='zh'?'健康检查':'Health'}</td></tr>
-    </table></div>
-  `;
-  renderNav();
-  loadRoutingInfo();   // 路由策略那行从 /api/stats 实时拼，不在前端写死后端名
-  loadDashKey();       // key 从后端现取（改 DASH_TOKEN 后文档自动跟着变，不写死在前端）
-}
-
-// 把「主轮转 ↔ 主轮转 轮转，N 个兜底」按当前实际载入的后端拼出来
-async function loadRoutingInfo(){
-  const el=document.getElementById('routingStrategy');
-  if(!el)return;
-  try{
-    const d=await(await fetch(`${API}/api/stats`)).json();
-    const bs=d.backends||[];
-    const prim=bs.filter(b=>b.is_primary&&!b.is_fallback).map(b=>b.name);
-    const fb=bs.filter(b=>b.is_fallback).length;
-    el.classList.remove('sub');
-    el.textContent = prim.length
-      ? prim.join(' ↔ ') + (lang==='zh'?` 轮转，${fb} 个兜底`:` rotation, ${fb} fallback`)
-      : (lang==='zh'?'无主轮转后端':'no primary backend');
-  }catch(e){
-    el.textContent = lang==='zh'?'读取失败':'unavailable';
-  }
-}
-
-// 文档页：静态 API key 从后端现取（不写死在前端，改 DASH_TOKEN 后文档自动跟着变），
-// 顺手把「快速开始 / cURL / OpenAI SDK」三处的 key 一起填上。
 async function loadDashKey(){
-  const val=document.getElementById('dashKeyVal');
-  if(!val)return;
-  const note=document.getElementById('dashKeyNote');
-  const btn=document.getElementById('dashKeyCopy');
-  const qs =document.getElementById('qsAuth');
-  const zh =lang==='zh';
-  let tok='', state='off';   // off=通道关闭 / err=没读到（401 或网络错，主循环 2s 内会把页面踢回登录页）
   try{
-    const res=await fetch(`${API}/api/dashkey`);
-    if(!res.ok) throw new Error('http '+res.status);
-    const d=await res.json();
-    if(d.enabled && d.token){ tok=d.token; state='on'; }
-  }catch(e){ state='err'; }
-
-  if(state!=='on'){
-    val.textContent = state==='err'
-      ? (zh?'未读取到（未登录或接口不可达）':'unavailable (not logged in or endpoint unreachable)')
-      : (zh?'未启用（DASH_TOKEN 被设成空串）':'disabled (DASH_TOKEN is empty)');
-    if(btn)btn.style.display='none';
-    if(qs)qs.textContent = state==='err'
-      ? (zh?'（未读取到，见上方「静态 API Key」卡）':'(not fetched — see the "Static API Key" card above)')
-      : (zh?'（key 未启用，浏览器走登录 cookie）':'(key disabled; browser uses login cookie)');
-    if(note)note.textContent = state==='err'
-      ? (zh?'稍等：登录态失效时主循环会自动跳回登录页。':'Hang on: an expired session makes the main loop bounce you to the login page.')
-      : (zh?'把 DASH_TOKEN 环境变量设成非空值即可重新开启这条通道。'
-          :'Set the DASH_TOKEN env var to a non-empty value to re-enable this channel.');
-    fillDashExamples('', zh);
-    return;
-  }
-
-  val.textContent=tok;
-  if(qs){ qs.textContent='Bearer '+tok; qs.style.wordBreak='break-all'; }
-  if(note)note.textContent = zh
-    ? '换 key：改 systemd unit 里的 DASH_TOKEN（设成空串 = 关掉这条通道）后重启网关。局域网 18006 本就免登录，用不到 key。'
-    : 'Rotate it via DASH_TOKEN in the systemd unit (empty string disables the channel), then restart the gateway. LAN :18006 needs no key.';
-  fillDashExamples(tok, zh);
-
-  if(btn){
-    btn.style.display='';
-    btn.textContent = zh?'复制':'Copy';
-    btn.onclick=async()=>{
-      let ok=false;
-      try{
-        if(navigator.clipboard && window.isSecureContext){ await navigator.clipboard.writeText(tok); ok=true; }
-        else{
-          const ta=document.createElement('textarea');
-          ta.value=tok; ta.style.position='fixed'; ta.style.opacity='0';
-          document.body.appendChild(ta); ta.select();
-          ok=document.execCommand('copy'); ta.remove();
-        }
-      }catch(e){ ok=false; }
-      btn.textContent = ok ? (zh?'已复制 ✓':'Copied ✓') : (zh?'复制失败，请手动选中':'Copy failed, select manually');
-      setTimeout(()=>{btn.textContent = zh?'复制':'Copy';},1600);
+    const res = await fetch(API + "/api/dashkey");
+    if (!res.ok) throw 0;
+    const d = await res.json();
+    const val = d.key || d.Key || JSON.stringify(d);
+    $("dashKeyVal").textContent = val;
+    $("dashKeyNote").textContent = "静态 key 只供本看板拉数据用；网关重启后若失效回来重新取一次。";
+    $("dashKeyCopy").style.display = "inline-block";
+    $("dashKeyCopy").onclick = () => {
+      navigator.clipboard.writeText(val).then(()=>{
+        const b = $("dashKeyCopy"); b.textContent = "已复制 ✓";
+        setTimeout(()=>b.textContent = "复制", 1400);
+      });
     };
+  }catch(e){
+    $("dashKeyVal").textContent = "未读取到（需网关在公网口提供 /api/dashkey）";
+    $("dashKeyNote").textContent = "LAN 免账口部署时本卡不适用。";
   }
 }
 
-// 两个示例块按 key / 语言重画（空 key 时留占位符，保证页面不空着）
-function fillDashExamples(tok, zh){
-  const base=location.origin;
-  const key=tok||'<你的 key | your key>';
-  const ex=document.getElementById('curlEx');
-  if(ex){
-    ex.textContent =
-      'curl '+base+'/v1/chat/completions \\\n'+
-      '  -H "Content-Type: application/json" \\\n'+
-      '  -H "Authorization: Bearer '+key+'" \\\n'+
-      "  -d '{\n"+
-      '    "model": "auto",\n'+
-      '    "messages": [{"role": "user", "content": "'+(zh?'你好':'hello')+'"}],\n'+
-      '    "max_tokens": 256\n'+
-      "  }'";
+setInterval(load, REFRESH_MS);
+setInterval(loadQuota, QUOTA_MS);
+setInterval(()=>{ $("footNow").textContent = "now " + new Date().toLocaleTimeString("zh-CN") + (connOK===false ? " · 重试中" : ""); }, 1000);
+
+/* ═══════════ MOCK：file:// 或 ?mock=1 时喂演示数据 ═══════════ */
+if (MOCK){
+  const rnd = (a,b)=>a+Math.random()*(b-a);
+  const lanes = [
+    {name:"vendor-a-main", model:"deepseek-v3", account:"vendor-a", weight:3, conc:8},
+    {name:"vendor-b-main", model:"kimi-k2",     account:"vendor-b", weight:2, conc:8},
+    {name:"free-d",        model:"glm-free",    account:"vendor-d", weight:1, conc:4},
+    {name:"free-e",        model:"glm-free",    account:"vendor-e", weight:1, conc:4},
+  ];
+  const fb = {name:"fallback-f", model:"doubao-pro", account:"vendor-c", weight:1, conc:4};
+  let attempts = 48210, ok = 46890, recent60 = 214, today = 8120, cooled = null;
+  function mockStats(){
+    if (Math.random() < .18) cooled = Math.random() < .5 ? {name:"free-d", t:rnd(120,900)} : null;
+    if (cooled) cooled.t = Math.max(0, cooled.t - 2);
+    if (cooled && cooled.t <= 0) cooled = null;
+    attempts += Math.round(rnd(8,26)); ok += Math.round(rnd(8,25)); recent60 = Math.round(rnd(150,280)); today += Math.round(rnd(1,6));
+    const mk = (b)=>{
+      const c = cooled && cooled.name===b.name;
+      return {...b, enabled:true, is_primary:!b.isFb, is_fallback:!!b.isFb, keys:2, timeout:600,
+        concurrency:b.conc, in_flight:Math.round(rnd(0,b.conc*.7)), waiters:Math.round(rnd(0,3)),
+        attempts:Math.round(attempts/6), success:Math.round(ok/6), failed:Math.round((attempts-ok)/40),
+        fail_breakdown:{ "429": Math.round(rnd(0,30)), "network": Math.round(rnd(0,8)) },
+        circuit_open:false, cooldown_remain_s:c?cooled.t:0,
+        last_error:c?"429 quota exhausted, cooling":(Math.random()<.2?"upstream 500 (1 retry ok)":""),
+        last_error_class:c?"quota":"", sticky_count:Math.round(rnd(0,9))};
+    };
+    return { backends: lanes.map(mk).concat([{...mk(fb)}]),
+      now:new Date().toISOString(), rpm:recent60,
+      sticky_hits:Math.round(attempts*.31), sticky_misses:Math.round(attempts*.19),
+      sticky_evictions:42, affinity:{hits:Math.round(attempts*.31), misses:Math.round(attempts*.19), puts:Math.round(attempts*.36), pinned_jobs:27} };
   }
-  const sdk=document.getElementById('sdkEx');
-  if(sdk){
-    sdk.textContent =
-      'from openai import OpenAI\n\n'+
-      'client = OpenAI(\n'+
-      '    base_url="'+base+'/v1",\n'+
-      '    api_key="'+key+'",   # 就是上面那把 key / the key above\n'+
-      ')\n'+
-      'r = client.chat.completions.create(\n'+
-      '    model="auto",\n'+
-      '    messages=[{"role": "user", "content": "'+(zh?'你好':'hello')+'"}],\n'+
-      ')\n'+
-      'print(r.choices[0].message.content)';
+  let hourTok = rnd(3e6, 6e6);
+  function mockTokens(){
+    hourTok += rnd(4e4, 9e4);
+    const byB = lanes.concat([fb]).map(b=>({backend:b.name, prompt_tokens:Math.round(rnd(2e6,9e6)), completion_tokens:Math.round(rnd(5e5,2e6)), total_tokens:Math.round(rnd(3e6,11e6)), cached_tokens:Math.round(rnd(1e6,5e6)), cost_usd:Math.random()<.7?Number(rnd(.2,9).toFixed(4)):undefined}));
+    const hourly = [];
+    const h0 = new Date().getHours();
+    for (let i = 0; i <= h0; i++){
+      const base = Math.sin((i-4)/24*Math.PI*2)*.3+.55;
+      hourly.push({hour:String(i).padStart(2,"0")+":00", prompt_tokens:Math.round(2e6*base), completion_tokens:Math.round(6e5*base), total_tokens:Math.round(hourTok*base/h0*3), cached_tokens:Math.round(8e5*base)});
+    }
+    return {total_tokens:Math.round(rnd(8e8,9e8)), today_tokens:Math.round(rnd(6e7,7e7)), month_tokens:Math.round(rnd(1.8e9,2e9)), hour_tokens:Math.round(hourTok), by_backend:byB, hourly_today:hourly, month_cost_usd:170.4213};
   }
+  function mockRecent(){
+    const b = lanes.concat([fb])[Math.floor(rnd(0,5))];
+    const oks = Math.random() > .12;
+    return {Rid:Math.random().toString(16).slice(2,10), Backend:b.name, Model:b.model, Stream:Math.random()<.8,
+      Seq:1, Status:oks?200:429, LatMs:Math.round(rnd(300,9000)), FtMs:Math.round(rnd(200,2000)),
+      Class:oks?"":"quota", Err:oks?"":"429 too many requests, enter cooldown", OK:oks,
+      PromptTokens:Math.round(rnd(1e3,9e4)), CompletionTokens:Math.round(rnd(1e2,9e3)), TotalTokens:0, CachedTokens:0, JobID:""};
+  }
+  renderKPI({started:"2026-10-21 00:12:44", uptime_sec:3971, today_requests:today, total_requests:attempts, total_ok:ok, total_fail:attempts-ok, recent_60s:recent60}, {rpm:recent60, recent_60s:recent60});
+  renderTokens(mockTokens());
+  const tick = ()=>{
+    const s = mockStats();
+    renderStats(s);
+    $("kTotal").textContent = fmtInt(s.backends.reduce((a,b)=>a+b.attempts,0));
+    $("k60").textContent = fmtInt(s.rpm);
+    $("kRpm").textContent = fmtInt(s.rpm);
+    const logs = []; for (let i = 0; i < Math.round(rnd(0,4)); i++) logs.push(mockRecent());
+    pushRecent(logs);
+    setConn(true);
+  };
+  initRecent();
+  tick(); setInterval(tick, 2000);
+  renderQuota({opencode:{go1:{status:"ok",windows:{rolling:{percent:38,resetsAt:new Date(Date.now()+5.2*3600e3).toISOString()},weekly:{percent:61,resetsAt:new Date(Date.now()+3.1*86400e3).toISOString()},monthly:{percent:24,resetsAt:new Date(Date.now()+12*86400e3).toISOString()}}},go2:{status:"stale",staleAt:Date.now()-600e3,msg:"probe 429，沿用上次快照",windows:{rolling:{percent:88,resetsAt:new Date(Date.now()+1.1*3600e3).toISOString()},weekly:{percent:74,resetsAt:new Date(Date.now()+2.4*86400e3).toISOString()},monthly:{percent:52,resetsAt:new Date(Date.now()+9*86400e3).toISOString()}}}},volc:{coding:{status:"need_credentials",msg:"缺火山 AK/SK，未配置 quota 凭据"}}});
+  renderHourly(mockTokens().hourly_today);
+  renderTokenByBackend(mockTokens().by_backend);
+  $("dashKeyVal").textContent = "sk-dash-mock-xxxxxxxxxxxx";
+  $("dashKeyNote").textContent = "MOCK 模式演示 · 真实数据由网关公网口 /api/dashkey 提供";
+  $("dashKeyCopy").style.display = "inline-block";
+  $("dashKeyCopy").onclick = ()=>{};
+  $("liveTxt").textContent = "LIVE · MOCK";
+  /* mock 下死接口换成本地演示：点车道 = 拉爆/复活 */
+  SHG.hooks.onLaneClick = (name) => {
+    const l = Sim.find(name);
+    if (l && l.state === "cd"){ Sim.forceHeal(name); toast("演示 · " + name + " 已复活"); }
+    else { Sim.forceBreak(name, 8000); toast("演示 · " + name + " 拉爆 8s（真实部署请在 SHG.hooks.onLaneClick 里接 admin API）"); }
+  };
+}else{
+  initRecent();
+  load(); loadQuota(); loadDashKey();
+  load().then(()=>{ getJSON("/api/tokens").then(tk=>{ renderHourly(tk.hourly_today); renderTokenByBackend(tk.by_backend); }).catch(()=>{}); });
 }
-
-function renderPage(){
-  const hash=location.hash||"#/";
-  if(hash==="#/docs")renderDocs();
-  else renderDashboard();
+/* 非 mock 下 token 图表也要随 2s 循环更新 */
+if (!MOCK){
+  setInterval(()=>{ getJSON("/api/tokens").then(tk=>{ renderHourly(tk.hourly_today); renderTokenByBackend(tk.by_backend); }).catch(()=>{}); }, REFRESH_MS * 3);
 }
-
-function render(){renderPage();}
-
-document.documentElement.lang=lang==="zh"?"zh":"en";
-window.addEventListener("hashchange",()=>{renderNav();renderPage();});
-render();
-setInterval(load,2000);
-loadQuota();            // 首次进页面立刻拉一次配额
-setInterval(loadQuota,30000);  // 配额 30s 刷新（上游窗口变化慢，不跟 2s 主循环）
 </script>
 </body>
 </html>
