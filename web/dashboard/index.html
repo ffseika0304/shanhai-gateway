@@ -600,7 +600,7 @@ const logKeys = new Set();
 function logKey(a){ return `${a.Rid||""}:${a.Seq||0}:${a.Status||0}:${a.LatMs||0}:${a.OK?"1":"0"}`; }
 function initRecent(){
   $("recentTbl").innerHTML =
-    `<thead><tr><th>RID</th><th>后端</th><th>模型</th><th>S</th><th>状态</th><th>耗时</th><th>分类</th><th>错误</th></tr></thead><tbody></tbody>`;
+    `<thead><tr><th>RID</th><th>后端</th><th>模型</th><th>入</th><th>出</th><th>S</th><th>状态</th><th>耗时</th><th>分类</th><th>错误</th></tr></thead><tbody></tbody>`;
 }
 function recentRow(a){
   const cls = a.OK ? "pos" : (a.Status||0) >= 400 ? "neg" : "";
@@ -608,6 +608,8 @@ function recentRow(a){
     <td class="mono dim">${esc((a.Rid||"-").slice(0,8))}</td>
     <td>${esc(a.Backend||"-")}</td>
     <td class="dim">${esc(a.Model||"-")}</td>
+    <td class="mono dim">${fmtInt(a.PromptTokens||0)}</td>
+    <td class="mono dim">${fmtInt(a.CompletionTokens||0)}</td>
     <td class="mono dim">${a.Stream?"S":"-"}</td>
     <td class="mono ${cls}">${a.Status||"-"}</td>
     <td class="mono">${a.LatMs||0}ms</td>
