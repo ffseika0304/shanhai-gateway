@@ -210,6 +210,14 @@ td .seqb{font-family:var(--mono);font-size:10px;color:var(--faint);border:1px so
 .btn:hover{color:var(--text);border-color:var(--border-hi)}
 .btn.acc{color:#fff;background:var(--accent);border-color:var(--accent)}
 #started-line{font-family:var(--mono);font-size:11.5px;color:var(--faint)}
+/* 已摘后端的折叠块：本月用量表里那批摘牌前的历史用量，收起来别占版面 */
+.retired-box{margin-top:8px}
+.retired-box>summary{cursor:pointer;font-size:12px;color:var(--faint);border-top:1px dashed var(--line,#2a3140);
+  padding:7px 2px;list-style:none;user-select:none}
+.retired-box>summary::-webkit-details-marker{display:none}
+.retired-box>summary::before{content:"\25B8 ";color:var(--dim)}
+.retired-box[open]>summary::before{content:"\25BE "}
+.retired-box>summary:hover{color:var(--dim)}
 .mock-badge{
   display:none;font-family:var(--mono);font-size:10.5px;color:var(--gold);
   border:1px dashed rgba(217,164,65,.5);border-radius:4px;padding:2px 8px;
@@ -316,6 +324,10 @@ td .seqb{font-family:var(--mono);font-size:10px;color:var(--faint);border:1px so
     <div class="card" style="margin-top:12px">
       <div class="card-h"><b data-i18n="byb_title">按后端用量 · 本月</b><span class="hint" data-i18n="byb_hint">费用按后端 Pricing 现算，没配单价的不回费用</span></div>
       <div class="tbl-wrap"><table id="tokenByBackend"></table></div>
+      <details class="retired-box" id="retiredBox" style="display:none">
+        <summary id="retiredSum"></summary>
+        <div class="tbl-wrap"><table id="retiredTbl"></table></div>
+      </details>
     </div>
 
     <div class="sec-h">
@@ -790,20 +802,27 @@ function renderHourly(hourly){
 }
 function renderTokenByBackend(rows){
   // 本月用量是**按后端名的历史聚合**：摘掉的后端（早期跑的兜底车道）用量仍在表里，
-  // 但它已经不是活车道了——标「已摘」并压暗，免得看着像"又回来了"。
+  // 但它已经不是活车道了——归到下面的折叠块（「已摘 N 个」），默认收起：
+  // 这批动辄十几行，摊在主表里纯属碍眼。
   const live = new Set(((lastStats && lastStats.backends) || []).map(b=>b.name));
-  $("tokenByBackend").innerHTML =
-    `<tr><th>${t("th_b")}</th><th>Prompt</th><th>${t("th_comp")}</th><th>${t("th_total")}</th><th>${t("th_cached")}</th><th>${t("th_cost")}</th></tr>` +
-    ((rows||[]).map(r=>{
-      const gone = !live.has(r.backend||"");
-      return `<tr${gone?' style="opacity:.45"':""}>
+  const head = `<tr><th>${t("th_b")}</th><th>Prompt</th><th>${t("th_comp")}</th><th>${t("th_total")}</th><th>${t("th_cached")}</th><th>${t("th_cost")}</th></tr>`;
+  const row = (r, gone) => `<tr${gone?' style="opacity:.5"':""}>
       <td><b>${esc(r.backend||"-")}</b>${gone?` <span class="seqb" title="${t("fb_gone_tip")}">${t("fb_gone")}</span>`:""}</td>
       <td class="mono dim">${fmtTok(r.prompt_tokens)}</td>
       <td class="mono dim">${fmtTok(r.completion_tokens)}</td>
       <td class="mono">${fmtTok(r.total_tokens)}</td>
       <td class="mono pos">${fmtTok(r.cached_tokens)}</td>
       <td class="mono warn">${r.cost_usd!==undefined ? "$"+Number(r.cost_usd).toFixed(4) : "—"}</td>
-    </tr>`;}).join("") || `<tr><td colspan="6" style="color:var(--faint)">${t("no_data")}</td></tr>`);
+    </tr>`;
+  const on = (rows||[]).filter(r=>live.has(r.backend||""));
+  const off = (rows||[]).filter(r=>!live.has(r.backend||""));
+  $("tokenByBackend").innerHTML = head + (on.map(r=>row(r,false)).join("") || `<tr><td colspan="6" style="color:var(--faint)">${t("no_data")}</td></tr>`);
+  const box = $("retiredBox");
+  if(!box) return;
+  if(!off.length){ box.style.display="none"; return; }
+  box.style.display="";
+  $("retiredSum").textContent = tf("byb_retired",{n:off.length});
+  $("retiredTbl").innerHTML = head + off.map(r=>row(r,true)).join("");
 }
 
 /* ═══════════ 最近请求（增量滚动窗口） ═══════════ */
