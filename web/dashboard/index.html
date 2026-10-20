@@ -405,6 +405,7 @@ zh:{
   no3:"03 / TOKEN", h_tokens:"用量与费用",
   no4:"04 / 路由池", h_pool:"后端状态", pool_hint:"熔断 / 冷却中的后端会整行标红 · 兜底后端单列",
   main_pool:"主轮转池", registered:" 在册", aff_title:"会话亲和（X-Job-Id）", aff_hint:"affinity 同形对象",
+  fb_gone:"已摘", fb_gone_tip:"该后端已从配置里摘掉，这里是本月的历史用量",
   fb_pool:"兜底池", fb_hint:"is_fallback · 不进候选表，但熔断/冷却恰恰最需要可见",
   no5:"05 / 配额", h_quota:"配额指挥舱",
   quota_note:"数据源：OpenCode 官方用量 API + 火山方舟 OpenAPI（实现参考 dsh-quota-panel / token-monitor，MIT，出处声明见 <code>scripts/quota_probe.py</code>）· 每 30s 刷新",
@@ -466,6 +467,7 @@ en:{
   no3:"03 / TOKENS", h_tokens:"Tokens & cost",
   no4:"04 / ROUTE POOL", h_pool:"Backend status", pool_hint:"circuit / cooldown rows glow red · fallback pool listed separately",
   main_pool:"Main rotation pool", registered:" tracked", aff_title:"Session affinity (X-Job-Id)", aff_hint:"isomorphic affinity object",
+  fb_gone:"retired", fb_gone_tip:"this backend was removed from the config; the row is historical usage for this month",
   fb_pool:"Fallback pool", fb_hint:"is_fallback · never in the candidate table, yet its circuit/cooldown most needs visibility",
   no5:"05 / QUOTA", h_quota:"Quota center",
   quota_note:"Data source: OpenCode official usage API + Volcengine Ark OpenAPI (reference: dsh-quota-panel / token-monitor, MIT — notices in <code>scripts/quota_probe.py</code>) · refreshes every 30s",
@@ -786,16 +788,21 @@ function renderHourly(hourly){
   $("hourlyX").innerHTML = rows.map(r=>`<span>${(r.hour||"").replace(":00","")}</span>`).join("");
 }
 function renderTokenByBackend(rows){
+  // 本月用量是**按后端名的历史聚合**：摘掉的后端（早期跑的兜底车道）用量仍在表里，
+  // 但它已经不是活车道了——标「已摘」并压暗，免得看着像"又回来了"。
+  const live = new Set(((lastStats && lastStats.backends) || []).map(b=>b.name));
   $("tokenByBackend").innerHTML =
     `<tr><th>${t("th_b")}</th><th>Prompt</th><th>${t("th_comp")}</th><th>${t("th_total")}</th><th>${t("th_cached")}</th><th>${t("th_cost")}</th></tr>` +
-    ((rows||[]).map(r=>`<tr>
-      <td><b>${esc(r.backend||"-")}</b></td>
+    ((rows||[]).map(r=>{
+      const gone = !live.has(r.backend||"");
+      return `<tr${gone?' style="opacity:.45"':""}>
+      <td><b>${esc(r.backend||"-")}</b>${gone?` <span class="seqb" title="${t("fb_gone_tip")}">${t("fb_gone")}</span>`:""}</td>
       <td class="mono dim">${fmtTok(r.prompt_tokens)}</td>
       <td class="mono dim">${fmtTok(r.completion_tokens)}</td>
       <td class="mono">${fmtTok(r.total_tokens)}</td>
       <td class="mono pos">${fmtTok(r.cached_tokens)}</td>
       <td class="mono warn">${r.cost_usd!==undefined ? "$"+Number(r.cost_usd).toFixed(4) : "—"}</td>
-    </tr>`).join("") || `<tr><td colspan="6" style="color:var(--faint)">${t("no_data")}</td></tr>`);
+    </tr>`;}).join("") || `<tr><td colspan="6" style="color:var(--faint)">${t("no_data")}</td></tr>`);
 }
 
 /* ═══════════ 最近请求（增量滚动窗口） ═══════════ */
