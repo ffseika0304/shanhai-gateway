@@ -30,3 +30,6 @@ config/quota.env
 # ── Python ─────────────────────────────────────────────────────
 __pycache__/
 *.pyc
+
+# 个人官网落地页(seika.ltd)——不属于本项目仓:源文件在站上/本机,发布走 scp
+shanhai-gateway.html
