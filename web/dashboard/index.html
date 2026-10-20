@@ -680,6 +680,9 @@ const Sim = (function(){
       '<text class="gate-label" x="465" y="288" text-anchor="middle">山海关 · SWRR</text>');
     const n = backends.length;
     const pktLayer = mkns("g",{}), fxLayer = mkns("g",{});
+    // 先把图层挂进 SVG：下面 insertBefore(g, pktLayer) 要求参照节点已是 svg 的子节点，
+    // 否则 NotFoundError("... is not a child of this node")，整块车道图渲染不出来。
+    svg.appendChild(pktLayer); svg.appendChild(fxLayer);
     backends.slice(0, MAX_LANES).forEach((b,i)=>{
       const y = laneY(i,n);
       const g = mkns("g",{class:"lane"});
@@ -698,7 +701,6 @@ const Sim = (function(){
       svg.insertAdjacentHTML("beforeend",
         `<text class="lane-sub" x="788" y="${laneY(MAX_LANES,n)+16}" text-anchor="middle">… 其余 ${n-MAX_LANES} 条车道略</text>`);
     }
-    svg.appendChild(pktLayer); svg.appendChild(fxLayer);
     Sim.pkts = pktLayer; Sim.fx = fxLayer;
   }
 
