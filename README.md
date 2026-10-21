@@ -282,6 +282,7 @@ LAN 口 `POST /v1/chat/completions` 不强制 key（免账通道）；下游 key
 | 6 | **会话亲和 = 轮转外一层"优先选择"** | 10-10 生产实测前缀缓存命中率 0%：SWRR 把同一对话轮流甩给不同 provider，前缀缓存在 provider 侧，第二轮落到别家缓存就不在同一地。已建立过粘性的会话后续请求优先钉回同一 backend；新会话首落仍由 SWRR 权重控制。只有最终成功且内容已交付才写表（防失败会话钉死在坏后端）；逐出/保持判定与冷却/熔断同源（`errclass.ReleaseAffinity`），不发明第二层健康层。亲和键优先 `X-Job-Id`（任务级，同一任务的所有轮次共用一个 id，正是前缀缓存的复用单元），退回 `X-Session-Key` |
 | 7 | **按家怪癖进 quirk 层，内核零名字分支** | 内核曾 0 处按 provider 名分支，因为踩过的坑都被泛化成了通用规则（无条件删 Content-Length、只改 model 一个键、`session_header` 字段、通用词表），这四条泛化得对。但下一个坑如果不具备可泛化性，揉进通用规则会伤别家、加 `if name==xxx` 会把名字判定撒进内核，两条都是错路。第三条路是把「只在某家出现的问题」写进 `internal/core/quirk/xxx.go`，内核只在三个固定缝上查表（见下节） |
 | 8 | **观测契约对齐 SLR 同形** | ① `attempts` 表含 `job_id` 列（对已存在库幂等 ALTER 迁移），按 job 归因/缓存分析的脚本迁移后原样可用；② `/api/stats` 提供 SLR 同形 `affinity{hits,misses,puts,pinned_jobs}` 对象，`pinned_jobs` 取裸表长（Len 先于 CountPerBackend，后者顺带清 TTL，顺序反了口径就偏）；`sticky_*` 三键是历史键名，看板还读着，保留。口径注意：`puts` 计每次真实 Put（含同 backend 刷新），与 SLR 逐位一致 |
+| 9 | **实例只由服务管理器拉起，别手工 `./slr`** | 2026-10-21 事故：另一个 agent 越级手工起了 `./slr`（脱管、PPID=1）占住 18006/18012，systemd 的实例 bind 失败 → exit-code → 崩溃循环 → 看板全天时好时坏（页面报"API 连接中断"）。配套三条：① 启动前等端口（报出占口 PID）；② 优雅关闭最长攥端口 600s（单后端 timeout）⇒ unit 必须 `TimeoutStopSec=45`（超时 SIGKILL，端口必释放）+ `Restart=always`；③ 改前端是 `go:embed` ⇒ 必须**重建二进制**，且重建/重启前先 `stop`（运行中的可执行文件写不进去）。部署后验的是**稳态**（`ActiveState` + `NRestarts` 不增长 + 端口归属的 PID 是服务那个）——重启后立刻 curl 一次会被旧实例骗过。 |
 
 ### 怪癖层（`internal/core/quirk`）：按家差异的落点
 
@@ -317,6 +318,26 @@ LAN 口 `POST /v1/chat/completions` 不强制 key（免账通道）；下游 key
 一句话记忆：可用性看 `usable`，内容有无看 `partial_ratio`，截断看 `truncated`，去重看 #4 的排序规则。`status` 只在有实义 HTTP 码时参考（partial 中途断是 200，别用 status 当完成判据）。
 
 ---
+
+### dev 实例怎么跑（别占生产端口）
+
+生产单元 `slr-router.service` 占用 **18006**(LAN)/**18012**(公网口) 与 dataDir `shadow-data/`。
+**任何手工 `./slr` 都会抢走这两个口** ⇒ systemd 的实例 bind 失败 → 崩溃循环 → 看板全天时好时坏
+（2026-10-21 事故：另一个 agent 越级手工起了 `./slr`，见运维语义规则 9）。
+
+要本地试跑，用独立端口与独立数据目录，别碰生产单元的任何东西：
+
+```sh
+LISTEN=:28006 LISTEN_PUBLIC=:28012 \
+GATEWAY_DATA_DIR=/tmp/slr-dev/data \
+GATEWAY_CONFIG_DIR=/tmp/slr-dev/config \
+GATEWAY_DB_FILE=/tmp/slr-dev/data/slr-dev.db \
+ROUTER_VALIDATE=0 \
+./slr
+```
+
+`/tmp/slr-dev/config/backends.json` 用**假凭据**即可（`sk-xxxxx`）；需要真凭据时从
+`shadow-config/backends.json` **复制**过去，别让 dev 实例指向生产目录。
 
 ## 周边服务：wb-panel / wb2api（WorkBuddy 系）
 
