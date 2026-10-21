@@ -458,6 +458,7 @@ zh:{
   th_rid:"RID", th_model:"模型", th_in:"入", th_out:"出", th_status2:"状态", th_lat:"耗时", th_class:"分类", th_err2:"错误",
   retrying:"重试中",
   sim_client:"调用方", sim_src:"→ 车道状态来自 /api/stats", sim_more:"… 其余 {n} 条车道略",
+  gate_swrr:"山海关 · SWRR",
   hook_click:"{n} · {state}",
   hook_break:"{n} 已拉爆（熔断打开）", hook_heal:"{n} 已复活（清冷却）",
   hook_fail:"{n} 操作失败：{msg}",
@@ -520,6 +521,7 @@ en:{
   th_rid:"RID", th_model:"Model", th_in:"In", th_out:"Out", th_status2:"Status", th_lat:"Latency", th_class:"Class", th_err2:"Error",
   retrying:"retrying",
   sim_client:"caller", sim_src:"→ lane states from /api/stats", sim_more:"… {n} more lanes omitted",
+  gate_swrr:"Shanhai Pass · SWRR",
   hook_click:"{n} · {state}",
   hook_break:"{n} tripped (circuit open)", hook_heal:"{n} restored (cooldown cleared)",
   hook_fail:"{n} failed: {msg}",
@@ -671,12 +673,12 @@ function renderKPI(m, stats){
   const total = m.total_requests||0, ok = m.total_ok||0, fail = m.total_fail||0;
   const rate = total ? (ok/total*100).toFixed(2) + "%" : "—";
   $("kpiRow").innerHTML =
-    kpi("0", "总请求", "acc", "kTotal") +
-    kpi("0", "成功率", "ok", "kRate") +
-    kpi("0", "近 60 秒", "", "k60") +
-    kpi("0", "RPM", "warn", "kRpm") +
-    kpi("0", "今日请求", "", "kToday") +
-    kpi("0", "进程 uptime", "", "kUp");
+    kpi("0", t("k_total"), "acc", "kTotal") +
+    kpi("0", t("k_rate"), "ok", "kRate") +
+    kpi("0", t("k_60"), "", "k60") +
+    kpi("0", t("k_rpm"), "warn", "kRpm") +
+    kpi("0", t("k_today"), "", "kToday") +
+    kpi("0", t("k_up"), "", "kUp");
   setNum("kTotal", total);
   $("kRate").textContent = rate;
   setNum("k60", stats.recent_60s ?? m.recent_60s ?? 0);
@@ -688,12 +690,12 @@ function renderKPI(m, stats){
 function renderTokens(tk){
   const cached = (tk.by_backend||[]).reduce((s,x)=>s+(x.cached_tokens||0), 0);
   $("tokenRow").innerHTML =
-    kpi("0", "本小时 Token", "", "tHour") +
-    kpi("0", "今日 Token", "ok", "tToday") +
-    kpi("0", "本月 Token", "warn", "tMonth") +
-    kpi("0", "累计 Token", "", "tAll") +
-    kpi("0", "本月缓存命中", "ok", "tCache") +
-    kpi("$0", "本月估算费用", "warn", "tCost");
+    kpi("0", t("t_hour"), "", "tHour") +
+    kpi("0", t("t_today"), "ok", "tToday") +
+    kpi("0", t("t_month"), "warn", "tMonth") +
+    kpi("0", t("t_all"), "", "tAll") +
+    kpi("0", t("t_cache"), "ok", "tCache") +
+    kpi("$0", t("t_cost"), "warn", "tCost");
   $("tHour").innerHTML = fmtTok(tk.hour_tokens);
   $("tToday").innerHTML = fmtTok(tk.today_tokens);
   $("tMonth").innerHTML = fmtTok(tk.month_tokens);
@@ -940,7 +942,7 @@ const Sim = (function(){
       `<text class="lane-sub" x="34" y="146">${t("sim_src")}</text>` +
       '<path class="wall-body" d="M395 150 h20 v-14 h20 v14 h20 v-14 h20 v14 h20 v-14 h20 v14 h20 v110 h-140 z"/>' +
       '<path class="gate-door" d="M435 260 v-25 a30 30 0 0 1 60 0 v25 z"/>' +
-      '<text class="gate-label" x="465" y="288" text-anchor="middle">山海关 · SWRR</text>');
+      `<text class="gate-label" x="465" y="288" text-anchor="middle">${t("gate_swrr")}</text>`);
     const n = backends.length;
     const pktLayer = mkns("g",{}), fxLayer = mkns("g",{});
     // 先把图层挂进 SVG：下面 insertBefore(g, pktLayer) 要求参照节点已是 svg 的子节点，
@@ -1118,7 +1120,7 @@ async function loadDashKey(){
 
 setInterval(load, REFRESH_MS);
 setInterval(loadQuota, QUOTA_MS);
-setInterval(()=>{ $("footNow").textContent = "now " + new Date().toLocaleTimeString("zh-CN") + (connOK===false ? " · " + t("retrying") : ""); }, 1000);
+setInterval(()=>{ $("footNow").textContent = "now " + new Date().toLocaleTimeString(lang==="en"?"en-US":"zh-CN") + (connOK===false ? " · " + t("retrying") : ""); }, 1000);
 
 applyI18n();
 applyI18n();
