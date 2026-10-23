@@ -527,7 +527,6 @@ en:{
   hook_fail:"{n} failed: {msg}",
   lane_cd_circuit:"circuit open", lane_cd_left:"cooldown {s}s", lane_ok:"ok",
   lane_fail:"{n} failures", lane_q:"quota 5h {r}% / wk {wk}% / mo {mo}%",
-  hook_break:"dead hook breakLane(\"{n}\") — reserved", hook_heal:"dead hook healLane(\"{n}\") — reserved",
   mock_heal:"demo · {n} restored", mock_break:"demo · {n} broken for 8s (wire SHG.hooks.onLaneClick to the admin API for real)",
   uptime_d:"d", uptime_h:"h", uptime_m:"m"
 }};
@@ -1061,9 +1060,6 @@ const Sim = (function(){
       if (aff && aff.pinned_jobs !== undefined && !okLanes().some(l=>l.name===pinName) && lanes.length && !lanes.some(l=>l.name===pinName)) pinName=null;
     },
     find(name){ return lanes.find(l=>l.name===name) || null; },
-    reset(){ lanes=[]; dots=[]; pinName=null; },
-    reset(){ lanes=[]; dots=[]; pinName=null; },
-    reset(){ lanes=[]; dots=[]; pinName=null; },
     reset(){ lanes=[]; dots=[]; pinName=null; },
     /* 视觉演示用：只影响模拟，不碰真实后端 */
     forceBreak(name, ms){ const l=this.find(name); if(l&&l.state!=="cd") enterCd(l, ms||8000); },
