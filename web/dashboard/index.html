@@ -787,7 +787,8 @@ function renderQuota(q){
   let html = "";
   for (const [name, item] of Object.entries(q.opencode || {})) html += quotaCard("opencode · " + name, item);
   const volc = q.volc || {};
-  for (const [name, item] of Object.entries(volc)) html += quotaCard("volc · " + name, item);
+  // 采集器为兼容旧缓存页同时写 coding/agent 别名（带 _alias 标记）⇒ 这里跳过，同一订阅只显示一张卡
+  for (const [name, item] of Object.entries(volc)) if (!item || !item._alias) html += quotaCard("volc · " + name, item);
   $("quotaCards").innerHTML = html || `<div class="qcard" style="color:var(--faint)">${t("q_none")}</div>`;
 }
 
