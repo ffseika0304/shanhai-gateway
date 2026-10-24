@@ -16,6 +16,8 @@ SWRR 加权轮转 · 配额指数冷却 · 任务级亲和 · 影子留存观测
   <a href="https://go.dev"><img src="https://img.shields.io/badge/go-%E2%89%A51.27-00ADD8?style=flat-square&logo=go" alt="Go ≥1.27"></a>
   <a href="#docker-部署"><img src="https://img.shields.io/badge/docker-镜像%2038.9MB-2496ED?style=flat-square&logo=docker" alt="Docker"></a>
 </p>
+<p align="center"><img src="assets/swrr-sim.gif" alt="SWRR 路由模拟 — 请求过闸 · 任务亲和钉道 · 429 指数冷却换道" width="880"></p>
+
 
 ---
 

@@ -17,6 +17,8 @@ SWRR weighted rotation · exponential quota cooldown · task-level affinity · s
   <a href="#quick-start"><img src="https://img.shields.io/badge/docker-image%2038.9MB-2496ED?style=flat-square&logo=docker" alt="Docker"></a>
 </p>
 
+<p align="center"><img src="assets/swrr-sim.gif" alt="SWRR 路由模拟 — 请求过闸 · 任务亲和钉道 · 429 指数冷却换道" width="880"></p>
+
 ---
 
 Every so often a vendor drops a generous free model. People farm it with a pile of accounts, resell access, the vendor notices — and the free tier dies.
